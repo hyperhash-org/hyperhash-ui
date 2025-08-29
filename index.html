@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Hyper‑Hash Pool</title>
-  <meta name="description" content="Hyper‑Hash Bitcoin mining pool — fast, minimal UI."/>
+  <title>Hyper-Hash Pool</title>
+  <meta name="description" content="Hyper-Hash Bitcoin mining pool — fast, minimal UI."/>
   <link rel="icon" href="favicon.png" type="image/png">
   <style>
     :root{
@@ -50,7 +50,7 @@
 <body>
   <main class="wrap">
     <section class="hero">
-      <h1>Mine bitcoin with Hyper‑Hash pool</h1>
+      <h1>Mine bitcoin with Hyper-Hash pool</h1>
       <p>Minimal, fast pool UI. Point your miner and hash.</p>
     </section>
 
@@ -99,7 +99,7 @@
     </section>
 
     <section class="tiles">
-      <a class="tile card" href="#"><h3>Transparency</h3><p>Open fees, open-source components, on‑chain payouts.</p></a>
+      <a class="tile card" href="#"><h3>Transparency</h3><p>Open fees, open-source components, on-chain payouts.</p></a>
       <a class="tile card" href="#"><h3>API</h3><p>REST + WebSocket endpoints for miners and dashboards.</p></a>
       <a class="tile card" href="#"><h3>Why choose H#</h3><p>SV1 first, SV2 next, clean payouts: 2% pool fee.</p></a>
       <a class="tile card" href="#"><h3>FAQ</h3><p>Connection, payouts, difficulty, and troubleshooting.</p></a>
@@ -109,9 +109,41 @@
   </main>
 
   <footer>
-    © 2025 Hyper‑Hash • <a href="#">GitHub</a> • <a href="#">Discord</a>
+    © 2025 Hyper-Hash • <a href="#">GitHub</a> • <a href="#">Discord</a>
   </footer>
 
+  <!-- Optional: switch quasar to live by defining HH_QUASAR before the script
+  <script>
+    window.HH_QUASAR = { mode: 'live', feed: 'wss://api.hh-pool.org/quasar' };
+  </script>
+  -->
   <script src="quasar-race.js"></script>
+
+  <!-- Pool stats wiring -->
+  <script>
+  async function loadPool(){
+    try{
+      const res = await fetch('/api/pool.json', { cache: 'no-store' });
+      const d = await res.json();
+
+      const fmtRate = (ghs) => {
+        if (!ghs && ghs !== 0) return '—';
+        if (ghs >= 1e6) return (ghs/1e6).toFixed(2) + ' PH/s';
+        if (ghs >= 1e3) return (ghs/1e3).toFixed(2) + ' TH/s';
+        return Math.round(ghs).toLocaleString() + ' GH/s';
+      };
+
+      document.getElementById('ps-hash').textContent   = fmtRate(d.hashrate_ghs || 0);
+      document.getElementById('ps-miners').textContent = (d.miners_online ?? '—');
+      document.getElementById('ps-shares').textContent = (d.round_shares || 0).toLocaleString();
+      document.getElementById('ps-blocks').textContent = (d.blocks_24h ?? 0);
+    } catch (e){
+      console.error('pool stats failed', e);
+    }
+  }
+  loadPool();
+  setInterval(loadPool, 15000);
+  </script>
 </body>
 </html>
+
