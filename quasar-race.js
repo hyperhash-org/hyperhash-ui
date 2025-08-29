@@ -1,6 +1,11 @@
-// Hyper-Hash Quasar Race Widget — v12.5 (demo/live, score radius, 20s pulse, inner axes)
+// Hyper-Hash Quasar Race Widget — v12.6
+// - Axes + legend use the SAME color as the shell (incl. green/red block glow)
+// - Axes + legend only visible during pulse (fade with the pulse factor)
+// - Pulse slowed (about half the previous rate)
+// - Deeper zoom + dblclick toggle
+
 (function () {
-  const cfg = (window.HH_QUASAR || {});
+  const cfg  = (window.HH_QUASAR || {});
   const mode = (cfg.mode || 'demo'); // 'demo' | 'live'
   const FEED = cfg.feed;
 
@@ -35,12 +40,23 @@
   let yaw = 0, pitch = 0, zoom = 340;
   let dragging = false, lx = 0, ly = 0;
 
+  const ZOOM_MIN = 60;   // deeper than before (was ~180)
+  const ZOOM_MAX = 1200; // let people step back more too
+
   wrap.addEventListener('wheel', e => {
     e.preventDefault();
     const d = Math.sign(e.deltaY);
-    zoom *= (1 - d * 0.08);
-    zoom = Math.max(180, Math.min(900, zoom));
+    const mult = e.shiftKey ? 0.16 : 0.08; // Shift for faster zoom
+    zoom *= (1 - d * mult);
+    zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom));
   }, { passive: false });
+
+  // double-click to toggle zoom in/out
+  let zoomToggleIn = true;
+  wrap.addEventListener('dblclick', () => {
+    zoom = zoomToggleIn ? ZOOM_MIN * 1.2 : 340;
+    zoomToggleIn = !zoomToggleIn;
+  });
 
   canvas.addEventListener('pointerdown', e => { dragging = true; lx = e.clientX; ly = e.clientY; });
   window.addEventListener('pointerup', () => dragging = false);
@@ -146,20 +162,39 @@
 
   // ------- sphere & pulse -------
   const R = 2, steps = 220, nlat = 24, nlon = 24;
+
+  // Event pulse (green if we win, red if not), lasts 20s
   let glowColor = null, glowUntil = 0;
   let axisPulseUntil = 0;
-  const PULSE_MS = 20000; // 20 seconds
+  const PULSE_MS = 20000; // 20s
+
+  // Base breathing pulse — slower than before (~half rate)
+  const BASE_COLOR = [34, 52, 71];            // rgb for normal shell
+  const PULSE_FREQ = 0.0008;                  // was ~0.0016
+  let lastShellRGBA = `rgba(${BASE_COLOR.join(',')},0.5)`;
+  let pulseAlpha = 0;                         // 0..1 visibility for overlays
 
   function drawSphere(time) {
     const now = Date.now();
-    const glowing = glowColor && now < glowUntil;
-    if (glowing) {
+    const isGlowing = glowColor && now < glowUntil;
+
+    if (isGlowing) {
       ctx.strokeStyle = glowColor;
       ctx.lineWidth = 2 * DPR;
+      lastShellRGBA = glowColor;
+      pulseAlpha = 1; // max visibility during event
     } else {
-      const a = 0.22 + 0.28 * Math.sin(time * 0.0016);
-      ctx.strokeStyle = `rgba(34,52,71,${Math.min(0.8, a)})`;
-      ctx.lineWidth = 1 * DPR;
+      // base breathing
+      const s = (Math.sin(time * PULSE_FREQ) + 1) / 2; // 0..1
+      // visibility curve (keep low part mostly hidden)
+      const vis = Math.max(0, Math.pow(s, 1.8) - 0.2) / 0.8; // ~0 when s small, to 1 near peaks
+      pulseAlpha = Math.max(0, Math.min(1, vis));
+
+      // stroke alpha tracks s softly
+      const a = 0.18 + 0.52 * s; // 0.18..0.70
+      ctx.strokeStyle = `rgba(${BASE_COLOR.join(',')},${a})`;
+      ctx.lineWidth = (a > 0.5 ? 1.4 : 1.0) * DPR;
+      lastShellRGBA = `rgba(${BASE_COLOR.join(',')},${Math.max(0.4, a)})`;
     }
 
     // latitude
@@ -193,25 +228,28 @@
     }
   }
 
-  // ------- inner axes (Nonce / Time / Merkle) -------
+  // ------- inner axes (Nonce / Time / Merkle) tied to pulse -------
   function drawInnerAxes() {
-    const now = Date.now();
-    const pulse = now < axisPulseUntil ? 1 : 0;
+    // Hide when pulse is very low
+    if (pulseAlpha < 0.2) return;
 
     const axisLen = 2.0; // up to shell
     const origin = rotXYZ(0, 0, 0);
 
     const axes = [
-      { vec: rotXYZ(axisLen, 0, 0), label: 'Nonce',  color: '#66d9ef' },
-      { vec: rotXYZ(0, axisLen, 0), label: 'Time',   color: '#a6e22e' },
-      { vec: rotXYZ(0, 0, axisLen), label: 'Merkle', color: '#fd971f' },
+      { vec: rotXYZ(axisLen, 0, 0), label: 'Nonce'  },
+      { vec: rotXYZ(0, axisLen, 0), label: 'Time'   },
+      { vec: rotXYZ(0, 0, axisLen), label: 'Merkle' },
     ];
 
     ctx.save();
-    ctx.lineWidth = 1.2 * DPR;
+    ctx.lineWidth = (1.2 + 0.6 * pulseAlpha) * DPR;
     ctx.font = `${12 * DPR}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
+
+    const stroke = lastShellRGBA;
+    const fill   = lastShellRGBA.replace('rgba', 'rgba'); // same color string
 
     const [ox, oy] = proj(...origin);
 
@@ -219,40 +257,44 @@
       const [ax, ay] = proj(...axis.vec);
 
       // line
-      ctx.strokeStyle = axis.color;
-      ctx.globalAlpha = 0.4 + 0.6 * pulse;
+      ctx.strokeStyle = stroke;
+      ctx.globalAlpha = 0.35 + 0.65 * pulseAlpha;
       ctx.beginPath();
       ctx.moveTo(ox, oy);
       ctx.lineTo(ax, ay);
       ctx.stroke();
 
       // label
-      ctx.fillStyle = axis.color;
-      ctx.globalAlpha = 0.6 + 0.4 * pulse;
+      ctx.fillStyle = fill;
+      ctx.globalAlpha = 0.45 + 0.55 * pulseAlpha;
       ctx.fillText(axis.label, ax, ay - 6 * DPR);
     });
 
     ctx.restore();
   }
 
-  // ------- lane legend -------
+  // ------- lane legend tied to pulse -------
   function drawLegend() {
+    if (pulseAlpha < 0.2) return; // hidden when pulse low
+
     const pad = 10 * DPR, lh = 16 * DPR, sw = 10 * DPR, gap = 8 * DPR;
     const x = 12 * DPR, y = 12 * DPR;
     const entries = ['SV1', 'SV1 Hyper', 'SV2', 'SV2 Hyper'];
     const w = 150 * DPR, h = (entries.length * (lh + 4 * DPR)) + pad * 2 - 4 * DPR;
 
     ctx.save();
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = 'rgba(10,16,22,0.8)';
-    ctx.strokeStyle = 'rgba(20,32,44,0.9)';
+    // panel uses shell color but translucent
+    ctx.globalAlpha = 0.25 + 0.55 * pulseAlpha;
+    // parse lastShellRGBA alpha out? we can just use it as stroke/fill
+    ctx.fillStyle = 'rgba(10,16,22,0.6)';
+    ctx.strokeStyle = lastShellRGBA;
     ctx.lineWidth = 1 * DPR;
     (ctx.roundRect ? ctx.roundRect(x, y, w, h, 8 * DPR) : ctx.rect(x, y, w, h));
     ctx.fill(); ctx.stroke();
 
     ctx.font = `${12 * DPR}px system-ui, -apple-system, Segoe UI, Roboto`;
     ctx.textBaseline = 'middle';
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = 0.55 + 0.45 * pulseAlpha;
 
     const rows = [
       ['SV1', LCOL.SV1],
@@ -341,7 +383,7 @@
       ctx.fill();
     }
 
-    // overlays inside the sphere & legend
+    // overlays (tied to pulse)
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
     drawInnerAxes();
