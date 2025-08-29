@@ -4,8 +4,8 @@
   <link rel="icon" href="favicon.png" type="image/png">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Miner • Hyper‑Hash</title>
-  <meta name="description" content="Miner details for Hyper‑Hash pool."/>
+  <title>Miner • Hyper-Hash</title>
+  <meta name="description" content="Miner details for Hyper-Hash pool."/>
   <style>
     :root{
       color-scheme:dark;
@@ -99,109 +99,107 @@
     </section>
   </main>
 
-  <footer>© 2025 Hyper‑Hash</footer>
+  <footer>© 2025 Hyper-Hash</footer>
 
   <script>
-    // Helper: get query parameter
-    function qp(name){
-      const u = new URL(window.location.href);
-      return u.searchParams.get(name) || '';
+    // --- tiny helpers ---
+    function qp(name){ const u = new URL(window.location.href); return u.searchParams.get(name) || ''; }
+    function fmtGH(ghs){
+      if (ghs == null) return '—';
+      if (ghs >= 1e6) return (ghs/1e6).toFixed(2) + ' PH/s';
+      if (ghs >= 1e3) return (ghs/1e3).toFixed(2) + ' TH/s';
+      return Number(ghs).toFixed(1) + ' GH/s';
     }
+    function isoToLocal(s){
+      if(!s) return '—';
+      try { return s.replace('T',' ').replace('Z',''); } catch { return s; }
+    }
+
     const minerId = qp('id') || qp('address') || '';
     document.getElementById('minerTitle').textContent = minerId || 'Unknown';
 
-    // Wire to your real API endpoints here:
-    const API = {
-      overview: id => `/api/miner/${encodeURIComponent(id)}`,
-      workers:  id => `/api/miner/${encodeURIComponent(id)}/workers`,
-      shares:   id => `/api/miner/${encodeURIComponent(id)}/shares?limit=50`
-    };
-
-    async function safeJson(url){
-      try { const r = await fetch(url); if(!r.ok) throw new Error(r.status); return await r.json(); }
-      catch(e){ return null; }
-    }
-
-    function fmt(num){
-      if(num == null || num === '-') return '—';
-      if(typeof num === 'number'){
-        if(Math.abs(num) >= 1e12) return (num/1e12).toFixed(2)+' TH/s';
-        if(Math.abs(num) >= 1e9) return (num/1e9).toFixed(2)+' GH/s';
-        if(Math.abs(num) >= 1e6) return (num/1e6).toFixed(2)+' MH/s';
-        if(Math.abs(num) >= 1e3) return (num/1e3).toFixed(2)+' kH/s';
-      }
-      return String(num);
-    }
-
     async function load(){
-      if(!minerId) return;
+      try{
+        const res = await fetch('/api/miners.json', { cache: 'no-store' });
+        const data = await res.json(); // { miners: [...] }
+        const miners = Array.isArray(data.miners) ? data.miners : [];
 
-      // 1) Overview
-      let o = await safeJson(API.overview(minerId));
-      if(!o){
-        // Fallback demo data if API is not wired yet
-        o = {
-          address: minerId,
-          current_hashrate: 1.06e12,
-          avg24h: 1.02e12,
-          accepted: 12450,
-          rejected: 23,
-          last_share_at: new Date().toISOString(),
-          difficulty: 2048,
-          workers: [
-            {name: minerId+'.rig1', hashrate: 0.54e12, accepted: 6451, rejected: 12, last_share: new Date().toISOString()},
-            {name: minerId+'.rig2', hashrate: 0.52e12, accepted: 5999, rejected: 11, last_share: new Date().toISOString()}
-          ]
-        };
-      }
-      document.getElementById('m-hash').textContent = fmt(o.current_hashrate);
-      document.getElementById('m-hash24').textContent = fmt(o.avg24h);
-      document.getElementById('m-acc').textContent = o.accepted ?? '—';
-      document.getElementById('m-rej').textContent = o.rejected ?? '—';
-      document.getElementById('m-addr').textContent = o.address || minerId;
-      document.getElementById('m-workers').textContent = (o.workers && o.workers.length) || 0;
-      document.getElementById('m-lastshare').textContent = (o.last_share_at || '—').replace('T',' ').replace('Z','');
-      document.getElementById('m-diff').textContent = o.difficulty ?? '—';
+        // pick matches: full id match, or address match when no slash
+        let matches = [];
+        if (minerId) {
+          if (minerId.includes('/')) {
+            matches = miners.filter(m => m.id === minerId);
+          } else {
+            matches = miners.filter(m => (m.address || '').toLowerCase() === minerId.toLowerCase());
+          }
+        } else {
+          // no id given -> show everything
+          matches = miners;
+        }
 
-      // 2) Workers
-      let workers = await safeJson(API.workers(minerId));
-      if(!workers || !Array.isArray(workers) || !workers.length) workers = o.workers || [];
-      const wb = document.getElementById('workersBody');
-      wb.innerHTML = '';
-      if(!workers.length){
-        wb.innerHTML = '<tr><td class="muted" colspan="5">No workers</td></tr>';
-      } else {
-        workers.forEach(w=>{
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td class="mono">${w.name}</td>
-                          <td>${fmt(w.hashrate)}</td>
-                          <td>${w.accepted ?? 0}</td>
-                          <td>${w.rejected ?? 0}</td>
-                          <td>${(w.last_share || '—').replace?.('T',' ').replace?.('Z','') || '—'}</td>`;
-          wb.appendChild(tr);
-        });
-      }
+        // Aggregate
+        const totalHashGHS = matches.reduce((a,m)=>a+(m.hashrate_ghs||0),0);
+        const totalAcc = matches.reduce((a,m)=>a+(m.accepted||0),0);
+        const totalRej = matches.reduce((a,m)=>a+(m.rejected||0),0);
+        const lastShare = matches
+          .map(m=>m.last_share)
+          .filter(Boolean)
+          .sort()
+          .slice(-1)[0] || null;
 
-      // 3) Shares
-      let shares = await safeJson(API.shares(minerId));
-      if(!shares || !Array.isArray(shares) || !shares.length){
-        shares = [
-          {time:new Date().toISOString(), worker:o.workers?.[0]?.name || (minerId+'.rig1'), diff:o.difficulty || 2048, status:'accepted'},
-          {time:new Date().toISOString(), worker:o.workers?.[1]?.name || (minerId+'.rig2'), diff:o.difficulty || 2048, status:'accepted'}
-        ];
+        // Fill header + connection
+        const addressShown = minerId && !minerId.includes('/') ? minerId : (matches[0]?.address || minerId || '—');
+        document.getElementById('m-hash').textContent = fmtGH(totalHashGHS);
+        document.getElementById('m-hash24').textContent = fmtGH(totalHashGHS); // stub: same as current
+        document.getElementById('m-acc').textContent = totalAcc.toLocaleString();
+        document.getElementById('m-rej').textContent = totalRej.toLocaleString();
+        document.getElementById('m-addr').textContent = addressShown;
+        document.getElementById('m-workers').textContent = matches.length;
+        document.getElementById('m-lastshare').textContent = isoToLocal(lastShare);
+        document.getElementById('m-diff').textContent = '—';
+
+        // Workers table
+        const wb = document.getElementById('workersBody');
+        wb.innerHTML = '';
+        if (!matches.length) {
+          wb.innerHTML = '<tr><td class="muted" colspan="5">No workers found for this miner.</td></tr>';
+        } else {
+          matches.forEach(w=>{
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="mono">${w.worker || w.id || '—'}</td>
+              <td>${fmtGH(w.hashrate_ghs)}</td>
+              <td>${(w.accepted||0).toLocaleString()}</td>
+              <td>${(w.rejected||0).toLocaleString()}</td>
+              <td>${isoToLocal(w.last_share)}</td>
+            `;
+            wb.appendChild(tr);
+          });
+        }
+
+        // Recent Shares (stubbed from worker last_share)
+        const sb = document.getElementById('sharesBody');
+        sb.innerHTML = '';
+        if (!matches.length) {
+          sb.innerHTML = '<tr><td class="muted" colspan="4">No share data.</td></tr>';
+        } else {
+          matches
+            .slice(0, 10)
+            .forEach(s=>{
+              const pill = `<span class="pill" style="border-color:#234b35;background:#10251a;color:#86e0a9">accepted</span>`;
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${isoToLocal(s.last_share)}</td>
+                <td class="mono">${s.worker || '—'}</td>
+                <td>—</td>
+                <td>${pill}</td>
+              `;
+              sb.appendChild(tr);
+            });
+        }
+      }catch(e){
+        console.error('miner load failed', e);
       }
-      const sb = document.getElementById('sharesBody');
-      sb.innerHTML = '';
-      shares.forEach(s=>{
-        const tr = document.createElement('tr');
-        const st = s.status || 'accepted';
-        const pill = `<span class="pill" style="border-color:${st==='accepted'?'#234b35':'#613236'};background:${st==='accepted'?'#10251a':'#221213'};color:${st==='accepted'?'#86e0a9':'#ffa2a2'}">${st}</span>`;
-        tr.innerHTML = `<td>${(s.time||'—').replace('T',' ').replace('Z','')}</td>
-                        <td class="mono">${s.worker||'—'}</td>
-                        <td>${s.diff||'—'}</td>
-                        <td>${pill}</td>`;
-        sb.appendChild(tr);
-      });
     }
 
     load();
@@ -209,3 +207,4 @@
   </script>
 </body>
 </html>
+
