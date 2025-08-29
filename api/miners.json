@@ -1,0 +1,7 @@
+﻿{
+  "miners": [
+    {"id":"1A1z.../rig-01","address":"1A1z...","worker":"rig-01","hashrate_ghs": 320.4,"accepted": 4012,"rejected": 12,"last_share": "2025-08-29T11:44:13Z"},
+    {"id":"1A1z.../rig-02","address":"1A1z...","worker":"rig-02","hashrate_ghs": 145.7,"accepted": 2021,"rejected": 8,"last_share": "2025-08-29T11:44:29Z"},
+    {"id":"bc1q.../garage","address":"bc1q...","worker":"garage","hashrate_ghs": 56.4,"accepted": 412,"rejected": 1,"last_share": "2025-08-29T11:43:50Z"}
+  ]
+}
