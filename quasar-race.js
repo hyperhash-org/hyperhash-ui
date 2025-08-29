@@ -1,8 +1,9 @@
-// Hyper-Hash Quasar Race Widget — v12.6
-// - Axes + legend use the SAME color as the shell (incl. green/red block glow)
-// - Axes + legend only visible during pulse (fade with the pulse factor)
-// - Pulse slowed (about half the previous rate)
-// - Deeper zoom + dblclick toggle
+// Hyper-Hash Quasar Race Widget — v12.8
+// - Shell OFF by default; "Legend" button toggles half-brightness shell.
+// - Axes (white) & lane legend only visible when shell is ON (manual or event).
+// - Block events: 20s green/red shell, then OFF.
+// - Demo/Live via window.HH_QUASAR = { mode: 'demo'|'live', feed: 'wss://...' }
+// - Score-based radius (further out = closer to target).
 
 (function () {
   const cfg  = (window.HH_QUASAR || {});
@@ -24,7 +25,6 @@
   canvas.style.width = '100%';
   canvas.style.height = '100%';
   wrap.appendChild(canvas);
-
   const ctx = canvas.getContext('2d');
   let DPR = Math.min(window.devicePixelRatio || 1, 2);
 
@@ -36,22 +36,89 @@
   new ResizeObserver(resize).observe(wrap);
   resize();
 
+  // ---- UI overlay: "Legend" button + lane legend (hidden when shell off) ----
+  const LCOL = { SV1: '#66d9ef', SV1H: '#f92672', SV2: '#fd971f', SV2H: '#a6e22e' };
+  const LANES = ['SV1', 'SV1H', 'SV2', 'SV2H'];
+
+  const panel = document.createElement('div');
+  panel.style.position = 'absolute';
+  panel.style.top = '12px';
+  panel.style.left = '12px';
+  panel.style.padding = '10px 12px';
+  panel.style.border = '1px solid rgba(124, 209, 255, 0.35)';
+  panel.style.borderRadius = '10px';
+  panel.style.background = 'rgba(10,16,22,0.70)';
+  panel.style.backdropFilter = 'blur(2px)';
+  panel.style.color = '#cfe3f7';
+  panel.style.font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  panel.style.userSelect = 'none';
+  wrap.appendChild(panel);
+
+  // "Legend" button (on top)
+  const legendBtn = document.createElement('button');
+  legendBtn.textContent = 'Legend';
+  legendBtn.style.display = 'block';
+  legendBtn.style.width = '100%';
+  legendBtn.style.padding = '6px 10px';
+  legendBtn.style.border = '1px solid rgba(124,209,255,0.35)';
+  legendBtn.style.borderRadius = '8px';
+  legendBtn.style.background = 'rgba(20,28,36,0.8)';
+  legendBtn.style.color = '#cfe3f7';
+  legendBtn.style.cursor = 'pointer';
+  legendBtn.onmouseenter = () => (legendBtn.style.background = 'rgba(26,34,44,0.9)');
+  legendBtn.onmouseleave = () => (legendBtn.style.background = 'rgba(20,28,36,0.8)');
+  panel.appendChild(legendBtn);
+
+  // Legend rows container (hidden when shell is OFF)
+  const legendRows = document.createElement('div');
+  legendRows.style.marginTop = '10px';
+  panel.appendChild(legendRows);
+
+  LANES.forEach(key => {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = '8px';
+    row.style.margin = '4px 0';
+    const dot = document.createElement('span');
+    dot.style.display = 'inline-block';
+    dot.style.width = '10px';
+    dot.style.height = '10px';
+    dot.style.borderRadius = '50%';
+    dot.style.background = LCOL[key];
+    const label = document.createElement('span');
+    label.textContent = (key === 'SV1H') ? 'SV1 Hyper' : (key === 'SV2H') ? 'SV2 Hyper' : key;
+    row.appendChild(dot); row.appendChild(label);
+    legendRows.appendChild(row);
+  });
+
+  // Manual toggle (shell off by default)
+  let legendManualOn = false;            // user toggle controls shell/axes/legend visibility
+  legendBtn.addEventListener('click', () => {
+    legendManualOn = !legendManualOn;
+    updatePanelActive(legendManualOn);
+  });
+
+  function updatePanelActive(active) {
+    legendBtn.style.borderColor = active ? '#7cd1ff' : 'rgba(124,209,255,0.35)';
+    panel.style.borderColor = active ? 'rgba(124,209,255,0.8)' : 'rgba(124,209,255,0.35)';
+    panel.style.boxShadow = active ? '0 0 0 1px rgba(124,209,255,0.25) inset' : 'none';
+  }
+  updatePanelActive(false); // initial
+
   // camera & interaction
   let yaw = 0, pitch = 0, zoom = 340;
   let dragging = false, lx = 0, ly = 0;
-
-  const ZOOM_MIN = 60;   // deeper than before (was ~180)
-  const ZOOM_MAX = 1200; // let people step back more too
+  const ZOOM_MIN = 60, ZOOM_MAX = 1200;
 
   wrap.addEventListener('wheel', e => {
     e.preventDefault();
     const d = Math.sign(e.deltaY);
-    const mult = e.shiftKey ? 0.16 : 0.08; // Shift for faster zoom
+    const mult = e.shiftKey ? 0.16 : 0.08;
     zoom *= (1 - d * mult);
     zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom));
   }, { passive: false });
 
-  // double-click to toggle zoom in/out
   let zoomToggleIn = true;
   wrap.addEventListener('dblclick', () => {
     zoom = zoomToggleIn ? ZOOM_MIN * 1.2 : 340;
@@ -59,7 +126,7 @@
   });
 
   canvas.addEventListener('pointerdown', e => { dragging = true; lx = e.clientX; ly = e.clientY; });
-  window.addEventListener('pointerup', () => dragging = false);
+  window.addEventListener('pointerup', () => (dragging = false));
   window.addEventListener('pointermove', e => {
     if (!dragging) return;
     const dx = e.clientX - lx, dy = e.clientY - ly;
@@ -69,20 +136,17 @@
     pitch = Math.max(-1.2, Math.min(1.2, pitch));
   });
 
-  // lanes & colors
-  const LCOL = { SV1: '#66d9ef', SV1H: '#f92672', SV2: '#fd971f', SV2H: '#a6e22e' };
-  const LANES = ['SV1', 'SV1H', 'SV2', 'SV2H'];
-
-  // dots pool
-  let dots = [];
-
   // math helpers
   function randDir() {
     const u = Math.random(), v = Math.random();
     const t = 2 * Math.PI * u, p = Math.acos(2 * v - 1);
+    return [Math.sin(p) * Math.cos(t), Math.cos(p)];
+  }
+  function randDir() { // corrected 3D
+    const u = Math.random(), v = Math.random();
+    const t = 2 * Math.PI * u, p = Math.acos(2 * v - 1);
     return [Math.sin(p) * Math.cos(t), Math.sin(p) * Math.sin(t), Math.cos(p)];
   }
-
   function rotXYZ(x, y, z) {
     const cy = Math.cos(yaw), sy = Math.sin(yaw);
     const cx = Math.cos(pitch), sx = Math.sin(pitch);
@@ -92,7 +156,6 @@
     Z = y * sx + Z * cx;
     return [X, Y, Z];
   }
-
   function proj(x, y, z) {
     const cx = canvas.width / 2, cy = canvas.height / 2;
     const f = zoom / (1 + 2 * (z + 2));
@@ -102,36 +165,19 @@
   // ------- score mapping (further out = better share) -------
   function scoreToRadius(score) {
     const s = Math.max(0, Math.min(1, +score || 0));
-    const gamma = 0.55;             // perceptual boost near the shell
+    const gamma = 0.55;
     const eased = Math.pow(s, gamma);
-    return 0.05 + eased * 1.95;     // 0.05..2.0 (surface)
+    return 0.05 + eased * 1.95;   // 0.05..2.0 (surface)
   }
-
-  function hexToLeadingZeroBits(hex) {
-    if (!hex) return 0;
-    let bits = 0;
-    for (let i = 0; i < hex.length; i++) {
-      const nib = parseInt(hex[i], 16);
-      if (nib === 0) { bits += 4; continue; }
-      if (nib < 2) bits += 3;
-      else if (nib < 4) bits += 2;
-      else if (nib < 8) bits += 1;
-      return bits;
-    }
-    return bits;
-  }
-
   function ratioFromHashAndTarget(hashHex, targetHex) {
     try {
-      const H = BigInt('0x' + hashHex);
-      const T = BigInt('0x' + targetHex);
+      const H = BigInt('0x' + hashHex), T = BigInt('0x' + targetHex);
       if (H <= 0n) return 1;
       let r = Number(T) / Number(H);
       if (!isFinite(r)) r = 1;
       return Math.max(0, Math.min(1, r));
     } catch { return 0; }
   }
-
   function normalizeShare(msg, netLeadingBitsHint) {
     if (typeof msg.ratio === 'number') return Math.max(0, Math.min(1, msg.ratio));
     if (typeof msg.leadingZeroBits === 'number') {
@@ -143,6 +189,7 @@
   }
 
   // ------- dots -------
+  let dots = [];
   function addDot(laneOpt, scoreOpt) {
     const dir = randDir();
     const lane = laneOpt || LANES[(Math.random() * 4) | 0];
@@ -153,49 +200,19 @@
     dots.push({ dir, r, cur: 0.02, size, col });
     if (dots.length > 14000) dots.shift();
   }
-
-  // initial fill in demo mode
   if (mode !== 'live') {
     for (let i = 0; i < 1400; i++) addDot();
     setInterval(addDot, 26);
   }
 
-  // ------- sphere & pulse -------
+  // ------- shell & axes -------
   const R = 2, steps = 220, nlat = 24, nlon = 24;
+  const AXIS_COLOR = 'rgba(255,255,255,0.85)'; // white axes
+  const SHELL_BASE_RGBA = 'rgba(34,52,71,0.5)'; // half brightness
 
-  // Event pulse (green if we win, red if not), lasts 20s
-  let glowColor = null, glowUntil = 0;
-  let axisPulseUntil = 0;
-  const PULSE_MS = 20000; // 20s
-
-  // Base breathing pulse — slower than before (~half rate)
-  const BASE_COLOR = [34, 52, 71];            // rgb for normal shell
-  const PULSE_FREQ = 0.0008;                  // was ~0.0016
-  let lastShellRGBA = `rgba(${BASE_COLOR.join(',')},0.5)`;
-  let pulseAlpha = 0;                         // 0..1 visibility for overlays
-
-  function drawSphere(time) {
-    const now = Date.now();
-    const isGlowing = glowColor && now < glowUntil;
-
-    if (isGlowing) {
-      ctx.strokeStyle = glowColor;
-      ctx.lineWidth = 2 * DPR;
-      lastShellRGBA = glowColor;
-      pulseAlpha = 1; // max visibility during event
-    } else {
-      // base breathing
-      const s = (Math.sin(time * PULSE_FREQ) + 1) / 2; // 0..1
-      // visibility curve (keep low part mostly hidden)
-      const vis = Math.max(0, Math.pow(s, 1.8) - 0.2) / 0.8; // ~0 when s small, to 1 near peaks
-      pulseAlpha = Math.max(0, Math.min(1, vis));
-
-      // stroke alpha tracks s softly
-      const a = 0.18 + 0.52 * s; // 0.18..0.70
-      ctx.strokeStyle = `rgba(${BASE_COLOR.join(',')},${a})`;
-      ctx.lineWidth = (a > 0.5 ? 1.4 : 1.0) * DPR;
-      lastShellRGBA = `rgba(${BASE_COLOR.join(',')},${Math.max(0.4, a)})`;
-    }
+  function drawShell(color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.2 * DPR;
 
     // latitude
     for (let j = 1; j <= nlat; j++) {
@@ -211,7 +228,6 @@
       }
       ctx.stroke();
     }
-
     // longitude
     for (let j = 0; j < nlon; j++) {
       const t0 = j / nlon * 2 * Math.PI;
@@ -228,100 +244,40 @@
     }
   }
 
-  // ------- inner axes (Nonce / Time / Merkle) tied to pulse -------
   function drawInnerAxes() {
-    // Hide when pulse is very low
-    if (pulseAlpha < 0.2) return;
-
-    const axisLen = 2.0; // up to shell
-    const origin = rotXYZ(0, 0, 0);
-
-    const axes = [
-      { vec: rotXYZ(axisLen, 0, 0), label: 'Nonce'  },
-      { vec: rotXYZ(0, axisLen, 0), label: 'Time'   },
-      { vec: rotXYZ(0, 0, axisLen), label: 'Merkle' },
-    ];
-
+    const [ox, oy] = proj(...rotXYZ(0, 0, 0));
     ctx.save();
-    ctx.lineWidth = (1.2 + 0.6 * pulseAlpha) * DPR;
+    ctx.lineWidth = 1.4 * DPR;
     ctx.font = `${12 * DPR}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
 
-    const stroke = lastShellRGBA;
-    const fill   = lastShellRGBA.replace('rgba', 'rgba'); // same color string
-
-    const [ox, oy] = proj(...origin);
-
-    axes.forEach(axis => {
-      const [ax, ay] = proj(...axis.vec);
-
-      // line
-      ctx.strokeStyle = stroke;
-      ctx.globalAlpha = 0.35 + 0.65 * pulseAlpha;
-      ctx.beginPath();
-      ctx.moveTo(ox, oy);
-      ctx.lineTo(ax, ay);
-      ctx.stroke();
-
-      // label
-      ctx.fillStyle = fill;
-      ctx.globalAlpha = 0.45 + 0.55 * pulseAlpha;
-      ctx.fillText(axis.label, ax, ay - 6 * DPR);
-    });
-
-    ctx.restore();
-  }
-
-  // ------- lane legend tied to pulse -------
-  function drawLegend() {
-    if (pulseAlpha < 0.2) return; // hidden when pulse low
-
-    const pad = 10 * DPR, lh = 16 * DPR, sw = 10 * DPR, gap = 8 * DPR;
-    const x = 12 * DPR, y = 12 * DPR;
-    const entries = ['SV1', 'SV1 Hyper', 'SV2', 'SV2 Hyper'];
-    const w = 150 * DPR, h = (entries.length * (lh + 4 * DPR)) + pad * 2 - 4 * DPR;
-
-    ctx.save();
-    // panel uses shell color but translucent
-    ctx.globalAlpha = 0.25 + 0.55 * pulseAlpha;
-    // parse lastShellRGBA alpha out? we can just use it as stroke/fill
-    ctx.fillStyle = 'rgba(10,16,22,0.6)';
-    ctx.strokeStyle = lastShellRGBA;
-    ctx.lineWidth = 1 * DPR;
-    (ctx.roundRect ? ctx.roundRect(x, y, w, h, 8 * DPR) : ctx.rect(x, y, w, h));
-    ctx.fill(); ctx.stroke();
-
-    ctx.font = `${12 * DPR}px system-ui, -apple-system, Segoe UI, Roboto`;
-    ctx.textBaseline = 'middle';
-    ctx.globalAlpha = 0.55 + 0.45 * pulseAlpha;
-
-    const rows = [
-      ['SV1', LCOL.SV1],
-      ['SV1 Hyper', LCOL.SV1H],
-      ['SV2', LCOL.SV2],
-      ['SV2 Hyper', LCOL.SV2H],
+    const axes = [
+      { vec: rotXYZ(2.0, 0, 0), label: 'Nonce'  },
+      { vec: rotXYZ(0, 2.0, 0), label: 'Time'   },
+      { vec: rotXYZ(0, 0, 2.0), label: 'Merkle' },
     ];
-    let yy = y + pad + lh / 2;
-    for (const [label, col] of rows) {
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.arc(x + pad + sw / 2, yy, sw / 2, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#cfe3f7';
-      ctx.fillText(label, x + pad + sw + gap, yy);
-      yy += lh + 4 * DPR;
-    }
+    axes.forEach(a => {
+      const [ax, ay] = proj(...a.vec);
+      ctx.strokeStyle = AXIS_COLOR;
+      ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ax, ay); ctx.stroke();
+      ctx.fillStyle = AXIS_COLOR;
+      ctx.fillText(a.label, ax, ay - 6 * DPR);
+    });
     ctx.restore();
   }
 
-  // ------- live feed -------
+  // ------- live feed (20s event shell) -------
+  let eventShellUntil = 0;
+  let eventShellColor = null;
+  const EVENT_MS = 20000;
+
   function handleEvent(msg) {
     if (!msg || typeof msg !== 'object') return;
 
     if (msg.type === 'share') {
-      const score = normalizeShare(msg, /*netLeadingBitsHint=*/68);
+      const score = normalizeShare(msg, 68);
       addDot(msg.lane, score);
 
     } else if (msg.type === 'burst') {
@@ -331,12 +287,9 @@
 
     } else if (msg.type === 'block') {
       const ours = (msg.pool || '').toUpperCase() === 'HH';
-      glowColor = ours ? '#15d17c' /* green */ : '#ff4d4d' /* red */;
-      const until = Date.now() + PULSE_MS; // 20s
-      glowUntil = until;
-      axisPulseUntil = until;
-
-      // celebratory burst at shell
+      eventShellColor = ours ? '#15d17c' : '#ff4d4d';
+      eventShellUntil = Date.now() + EVENT_MS;
+      // celebratory burst
       for (let i = 0; i < 120; i++) addDot(msg.lane, 1);
     }
   }
@@ -350,21 +303,49 @@
     } catch {}
   }
 
+  // legend visibility state
+  let lastLegendShown = null;
+  function setLegendVisible(v) {
+    if (v === lastLegendShown) return;
+    legendRows.style.display = v ? 'block' : 'none';
+    panel.style.borderColor = v ? 'rgba(124,209,255,0.8)' : 'rgba(124,209,255,0.35)';
+    panel.style.boxShadow = v ? '0 0 0 1px rgba(124,209,255,0.25) inset' : 'none';
+    lastLegendShown = v;
+  }
+  setLegendVisible(false);
+
   // ------- render loop -------
   function render(time) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     yaw += 0.0016;
-    drawSphere(time || 0);
 
-    // animate dots toward target radius
+    // Shell state: event → ON, else manual → ON, else OFF
+    const now = Date.now();
+    let shellToDraw = null;
+    if (now < eventShellUntil && eventShellColor) {
+      shellToDraw = eventShellColor;       // forced ON during 20s event window
+    } else if (legendManualOn) {
+      shellToDraw = SHELL_BASE_RGBA;       // half-brightness if user toggled
+    }
+
+    // draw shell & axes only when active
+    if (shellToDraw) {
+      drawShell(shellToDraw);
+      drawInnerAxes();
+      setLegendVisible(true);
+    } else {
+      setLegendVisible(false);
+    }
+
+    // dots animation
     for (let i = 0; i < dots.length; i++) {
       const d = dots[i];
       d.cur += (d.r - d.cur) * 0.04;
     }
 
-    // depth sort and draw
+    // depth sort & draw dots
     const pts = dots.map(d => {
       const [dx, dy, dz] = d.dir;
       const x = dx * d.cur, y = dy * d.cur, z = dz * d.cur;
@@ -382,12 +363,6 @@
       ctx.fillStyle = p.col;
       ctx.fill();
     }
-
-    // overlays (tied to pulse)
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 1;
-    drawInnerAxes();
-    drawLegend();
 
     requestAnimationFrame(render);
   }
