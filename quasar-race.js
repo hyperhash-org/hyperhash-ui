@@ -1,7 +1,7 @@
 // Hyper‑Hash Quasar Race Widget — v12.1 aligned
 (function(){
   const mount=document.getElementById('quasar-wrap'); if(!mount) return;
-  const wrap=document.createElement('div'); wrap.style.position='relative'; wrap.style.width='100%'; wrap.style.height='100%';
+  const wrap=document.createElement('div'); // fixed ref; wrap.style.position='relative'; wrap.style.width='100%'; wrap.style.height='100%';
   const canvas=document.createElement('canvas'); canvas.style.width='100%'; canvas.style.height='100%'; wrap.appendChild(canvas);
   const ctx=canvas.getContext('2d'); let DPR=Math.min(window.devicePixelRatio||1,2);
   function resize(){const r=wrap.getBoundingClientRect(); canvas.width=Math.floor(r.width*DPR); canvas.height=Math.floor(r.height*DPR);} new ResizeObserver(resize).observe(wrap); resize();
