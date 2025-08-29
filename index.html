@@ -36,6 +36,7 @@
     .tbl{width:100%;border-collapse:collapse}
     .tbl th,.tbl td{border-bottom:1px solid var(--line);padding:10px 8px;text-align:left;font-size:14px}
     .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+    .muted{color:var(--muted)}
     section{margin-bottom:var(--gap)}
     .tiles{display:grid;gap:var(--gap);grid-template-columns:1fr}
     @media(min-width:760px){.tiles{grid-template-columns:repeat(3,1fr)}}
@@ -88,6 +89,17 @@
 
     <section class="card">
       <h2>Miner Stats</h2>
+
+      <!-- Miner search UI -->
+      <div class="bar" style="margin-bottom:12px;gap:8px">
+        <input id="minerQ" class="mono" placeholder="Search address or address/worker"
+               style="flex:1 1 260px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#0b1218;color:var(--ink);outline:none">
+        <button id="minerGo"
+                style="padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:#14202c;color:var(--ink);cursor:pointer">
+          Open
+        </button>
+      </div>
+
       <table class="tbl">
         <thead>
           <tr><th>Worker</th><th>Hashrate</th><th>Accepted</th><th>Rejected</th><th>Last Share</th></tr>
@@ -144,6 +156,28 @@
   loadPool();
   setInterval(loadPool, 15000);
   </script>
+
+  <!-- Miner search wiring -->
+  <script>
+  (function(){
+    const q = document.getElementById('minerQ');
+    const go = document.getElementById('minerGo');
+    if(!q || !go) return;
+
+    function nav(){
+      const v = (q.value || '').trim();
+      if(!v) return;
+      const url = v.includes('/')
+        ? `miner.html?id=${encodeURIComponent(v)}`
+        : `miner.html?address=${encodeURIComponent(v)}`;
+      window.location.href = url;
+    }
+
+    go.addEventListener('click', nav);
+    q.addEventListener('keydown', e => { if(e.key === 'Enter') nav(); });
+  })();
+  </script>
 </body>
 </html>
+
 
