@@ -1,5 +1,9 @@
-// Hyper-Hash Quasar Race Widget — v12.3 (legend + axes)
+// Hyper-Hash Quasar Race Widget — v12.5 (demo/live, score radius, 20s pulse, inner axes)
 (function () {
+  const cfg = (window.HH_QUASAR || {});
+  const mode = (cfg.mode || 'demo'); // 'demo' | 'live'
+  const FEED = cfg.feed;
+
   const mount = document.getElementById('quasar-wrap');
   if (!mount) return;
 
@@ -27,6 +31,7 @@
   new ResizeObserver(resize).observe(wrap);
   resize();
 
+  // camera & interaction
   let yaw = 0, pitch = 0, zoom = 340;
   let dragging = false, lx = 0, ly = 0;
 
@@ -48,29 +53,19 @@
     pitch = Math.max(-1.2, Math.min(1.2, pitch));
   });
 
+  // lanes & colors
   const LCOL = { SV1: '#66d9ef', SV1H: '#f92672', SV2: '#fd971f', SV2H: '#a6e22e' };
   const LANES = ['SV1', 'SV1H', 'SV2', 'SV2H'];
+
+  // dots pool
   let dots = [];
 
+  // math helpers
   function randDir() {
     const u = Math.random(), v = Math.random();
     const t = 2 * Math.PI * u, p = Math.acos(2 * v - 1);
     return [Math.sin(p) * Math.cos(t), Math.sin(p) * Math.sin(t), Math.cos(p)];
   }
-
-  function addDot() {
-    const bits = (Math.random() * 32) | 0;
-    const r = 0.05 + (bits / 32) * 1.95;
-    const dir = randDir();
-    const lane = LANES[(Math.random() * 4) | 0];
-    const col = LCOL[lane];
-    const size = 0.6 + (bits / 32) * 2.0;
-    dots.push({ dir, r, cur: 0.02, size, col });
-    if (dots.length > 14000) dots.shift();
-  }
-
-  for (let i = 0; i < 1400; i++) addDot();
-  setInterval(addDot, 26);
 
   function rotXYZ(x, y, z) {
     const cy = Math.cos(yaw), sy = Math.sin(yaw);
@@ -88,13 +83,86 @@
     return [cx + x * f, cy - y * f, f / 300];
   }
 
+  // ------- score mapping (further out = better share) -------
+  function scoreToRadius(score) {
+    const s = Math.max(0, Math.min(1, +score || 0));
+    const gamma = 0.55;             // perceptual boost near the shell
+    const eased = Math.pow(s, gamma);
+    return 0.05 + eased * 1.95;     // 0.05..2.0 (surface)
+  }
+
+  function hexToLeadingZeroBits(hex) {
+    if (!hex) return 0;
+    let bits = 0;
+    for (let i = 0; i < hex.length; i++) {
+      const nib = parseInt(hex[i], 16);
+      if (nib === 0) { bits += 4; continue; }
+      if (nib < 2) bits += 3;
+      else if (nib < 4) bits += 2;
+      else if (nib < 8) bits += 1;
+      return bits;
+    }
+    return bits;
+  }
+
+  function ratioFromHashAndTarget(hashHex, targetHex) {
+    try {
+      const H = BigInt('0x' + hashHex);
+      const T = BigInt('0x' + targetHex);
+      if (H <= 0n) return 1;
+      let r = Number(T) / Number(H);
+      if (!isFinite(r)) r = 1;
+      return Math.max(0, Math.min(1, r));
+    } catch { return 0; }
+  }
+
+  function normalizeShare(msg, netLeadingBitsHint) {
+    if (typeof msg.ratio === 'number') return Math.max(0, Math.min(1, msg.ratio));
+    if (typeof msg.leadingZeroBits === 'number') {
+      const net = typeof netLeadingBitsHint === 'number' ? netLeadingBitsHint : 68;
+      return Math.max(0, Math.min(1, msg.leadingZeroBits / net));
+    }
+    if (msg.hash && msg.target) return ratioFromHashAndTarget(msg.hash, msg.target);
+    return 0;
+  }
+
+  // ------- dots -------
+  function addDot(laneOpt, scoreOpt) {
+    const dir = randDir();
+    const lane = laneOpt || LANES[(Math.random() * 4) | 0];
+    const col = LCOL[lane] || '#7cd1ff';
+    const score = typeof scoreOpt === 'number' ? scoreOpt : Math.random() * 0.25;
+    const r = scoreToRadius(score);
+    const size = 0.6 + score * 2.0;
+    dots.push({ dir, r, cur: 0.02, size, col });
+    if (dots.length > 14000) dots.shift();
+  }
+
+  // initial fill in demo mode
+  if (mode !== 'live') {
+    for (let i = 0; i < 1400; i++) addDot();
+    setInterval(addDot, 26);
+  }
+
+  // ------- sphere & pulse -------
   const R = 2, steps = 220, nlat = 24, nlon = 24;
+  let glowColor = null, glowUntil = 0;
+  let axisPulseUntil = 0;
+  const PULSE_MS = 20000; // 20 seconds
 
   function drawSphere(time) {
-    const a = 0.22 + 0.28 * Math.sin(time * 0.0016);
-    ctx.strokeStyle = `rgba(34,52,71,${Math.min(0.8, a)})`;
-    ctx.lineWidth = 1 * DPR;
+    const now = Date.now();
+    const glowing = glowColor && now < glowUntil;
+    if (glowing) {
+      ctx.strokeStyle = glowColor;
+      ctx.lineWidth = 2 * DPR;
+    } else {
+      const a = 0.22 + 0.28 * Math.sin(time * 0.0016);
+      ctx.strokeStyle = `rgba(34,52,71,${Math.min(0.8, a)})`;
+      ctx.lineWidth = 1 * DPR;
+    }
 
+    // latitude
     for (let j = 1; j <= nlat; j++) {
       const phi = -Math.PI / 2 + (j * (Math.PI / (nlat + 1)));
       ctx.beginPath();
@@ -109,6 +177,7 @@
       ctx.stroke();
     }
 
+    // longitude
     for (let j = 0; j < nlon; j++) {
       const t0 = j / nlon * 2 * Math.PI;
       ctx.beginPath();
@@ -124,25 +193,63 @@
     }
   }
 
-  // --- overlays ---
+  // ------- inner axes (Nonce / Time / Merkle) -------
+  function drawInnerAxes() {
+    const now = Date.now();
+    const pulse = now < axisPulseUntil ? 1 : 0;
+
+    const axisLen = 2.0; // up to shell
+    const origin = rotXYZ(0, 0, 0);
+
+    const axes = [
+      { vec: rotXYZ(axisLen, 0, 0), label: 'Nonce',  color: '#66d9ef' },
+      { vec: rotXYZ(0, axisLen, 0), label: 'Time',   color: '#a6e22e' },
+      { vec: rotXYZ(0, 0, axisLen), label: 'Merkle', color: '#fd971f' },
+    ];
+
+    ctx.save();
+    ctx.lineWidth = 1.2 * DPR;
+    ctx.font = `${12 * DPR}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+
+    const [ox, oy] = proj(...origin);
+
+    axes.forEach(axis => {
+      const [ax, ay] = proj(...axis.vec);
+
+      // line
+      ctx.strokeStyle = axis.color;
+      ctx.globalAlpha = 0.4 + 0.6 * pulse;
+      ctx.beginPath();
+      ctx.moveTo(ox, oy);
+      ctx.lineTo(ax, ay);
+      ctx.stroke();
+
+      // label
+      ctx.fillStyle = axis.color;
+      ctx.globalAlpha = 0.6 + 0.4 * pulse;
+      ctx.fillText(axis.label, ax, ay - 6 * DPR);
+    });
+
+    ctx.restore();
+  }
+
+  // ------- lane legend -------
   function drawLegend() {
     const pad = 10 * DPR, lh = 16 * DPR, sw = 10 * DPR, gap = 8 * DPR;
     const x = 12 * DPR, y = 12 * DPR;
-
-    // background panel
     const entries = ['SV1', 'SV1 Hyper', 'SV2', 'SV2 Hyper'];
     const w = 150 * DPR, h = (entries.length * (lh + 4 * DPR)) + pad * 2 - 4 * DPR;
+
     ctx.save();
     ctx.globalAlpha = 0.9;
     ctx.fillStyle = 'rgba(10,16,22,0.8)';
     ctx.strokeStyle = 'rgba(20,32,44,0.9)';
     ctx.lineWidth = 1 * DPR;
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, 8 * DPR);
-    ctx.fill();
-    ctx.stroke();
+    (ctx.roundRect ? ctx.roundRect(x, y, w, h, 8 * DPR) : ctx.rect(x, y, w, h));
+    ctx.fill(); ctx.stroke();
 
-    // rows
     ctx.font = `${12 * DPR}px system-ui, -apple-system, Segoe UI, Roboto`;
     ctx.textBaseline = 'middle';
     ctx.globalAlpha = 1;
@@ -155,13 +262,11 @@
     ];
     let yy = y + pad + lh / 2;
     for (const [label, col] of rows) {
-      // color swatch
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.arc(x + pad + sw / 2, yy, sw / 2, 0, Math.PI * 2);
       ctx.fill();
 
-      // label
       ctx.fillStyle = '#cfe3f7';
       ctx.fillText(label, x + pad + sw + gap, yy);
       yy += lh + 4 * DPR;
@@ -169,77 +274,55 @@
     ctx.restore();
   }
 
-  function drawAxes() {
-    // axis vectors in model space
-    const axisLen = 1.2;
-    const origin = proj(...rotXYZ(0, 0, 0));
-    const X = proj(...rotXYZ(axisLen, 0, 0));
-    const Y = proj(...rotXYZ(0, axisLen, 0));
-    const Z = proj(...rotXYZ(0, 0, axisLen));
+  // ------- live feed -------
+  function handleEvent(msg) {
+    if (!msg || typeof msg !== 'object') return;
 
-    const o = { x: origin[0], y: origin[1] };
-    const axes = [
-      { to: { x: X[0], y: X[1] }, col: '#9bb8ff', label: 'X' },
-      { to: { x: Y[0], y: Y[1] }, col: '#9af2b8', label: 'Y' },
-      { to: { x: Z[0], y: Z[1] }, col: '#ffd38a', label: 'Z' },
-    ];
+    if (msg.type === 'share') {
+      const score = normalizeShare(msg, /*netLeadingBitsHint=*/68);
+      addDot(msg.lane, score);
 
-    ctx.save();
-    ctx.lineWidth = 1.5 * DPR;
-    ctx.lineCap = 'round';
-    ctx.font = `${11 * DPR}px system-ui, -apple-system, Segoe UI, Roboto`;
-    ctx.textBaseline = 'middle';
+    } else if (msg.type === 'burst') {
+      const n = Math.max(1, Math.min(200, msg.count | 0));
+      const score = normalizeShare(msg, 68);
+      for (let i = 0; i < n; i++) addDot(msg.lane, score || Math.random() * 0.25);
 
-    // move axes to lower-right corner slightly inset
-    const inset = 80 * DPR;
-    const base = { x: canvas.width - inset, y: canvas.height - inset };
-    const centerShift = { x: base.x - o.x, y: base.y - o.y };
+    } else if (msg.type === 'block') {
+      const ours = (msg.pool || '').toUpperCase() === 'HH';
+      glowColor = ours ? '#15d17c' /* green */ : '#ff4d4d' /* red */;
+      const until = Date.now() + PULSE_MS; // 20s
+      glowUntil = until;
+      axisPulseUntil = until;
 
-    axes.forEach(a => {
-      const tx = a.to.x + centerShift.x;
-      const ty = a.to.y + centerShift.y;
-
-      // line
-      ctx.strokeStyle = a.col;
-      ctx.globalAlpha = 0.9;
-      ctx.beginPath();
-      ctx.moveTo(base.x, base.y);
-      ctx.lineTo(tx, ty);
-      ctx.stroke();
-
-      // arrow head
-      const vx = tx - base.x, vy = ty - base.y;
-      const vlen = Math.max(0.0001, Math.hypot(vx, vy));
-      const ux = vx / vlen, uy = vy / vlen;
-      const head = 6 * DPR, side = 4 * DPR;
-      ctx.beginPath();
-      ctx.moveTo(tx, ty);
-      ctx.lineTo(tx - ux * head + -uy * side, ty - uy * head + ux * side);
-      ctx.lineTo(tx - ux * head + uy * side, ty - uy * head + -ux * side);
-      ctx.closePath();
-      ctx.fillStyle = a.col;
-      ctx.fill();
-
-      // label
-      ctx.fillStyle = '#cfe3f7';
-      ctx.globalAlpha = 0.9;
-      ctx.fillText(a.label, tx + 6 * DPR, ty);
-    });
-
-    ctx.restore();
+      // celebratory burst at shell
+      for (let i = 0; i < 120; i++) addDot(msg.lane, 1);
+    }
   }
 
+  if (mode === 'live' && typeof WebSocket !== 'undefined' && FEED) {
+    try {
+      const ws = new WebSocket(FEED);
+      ws.onmessage = (e) => { try { handleEvent(JSON.parse(e.data)); } catch {} };
+      ws.onerror = () => {};
+      ws.onclose = () => {};
+    } catch {}
+  }
+
+  // ------- render loop -------
   function render(time) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // sphere + dots
     yaw += 0.0016;
     drawSphere(time || 0);
+
+    // animate dots toward target radius
     for (let i = 0; i < dots.length; i++) {
       const d = dots[i];
       d.cur += (d.r - d.cur) * 0.04;
     }
+
+    // depth sort and draw
     const pts = dots.map(d => {
       const [dx, dy, dz] = d.dir;
       const x = dx * d.cur, y = dy * d.cur, z = dz * d.cur;
@@ -258,15 +341,21 @@
       ctx.fill();
     }
 
-    // overlays last
+    // overlays inside the sphere & legend
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
+    drawInnerAxes();
     drawLegend();
-    drawAxes();
 
     requestAnimationFrame(render);
   }
-
   requestAnimationFrame(render);
+
+  // tiny manual API for testing
+  window.HHQuasar = {
+    add: (lane, score) => addDot(lane || 'SV1', typeof score === 'number' ? score : undefined),
+    share: (lane, ratio) => handleEvent({ type: 'share', lane: lane || 'SV1', ratio: +ratio || 0 }),
+    block: (lane, ours=true) => handleEvent({ type: 'block', lane: lane || 'SV1', pool: ours ? 'HH' : 'OTHER' })
+  };
 })();
 
