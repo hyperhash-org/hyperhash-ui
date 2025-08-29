@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hyper‑Hash Pool</title>
+  <meta name="description" content="Hyper‑Hash Bitcoin mining pool — fast, minimal UI."/>
+  <style>
+    :root{
+      color-scheme:dark;
+      --bg:#0b0d10;
+      --panel:#0f1419;
+      --ink:#e7edf3;
+      --muted:#8ea0b2;
+      --line:#14202c;
+      --accent:#7cd1ff;
+      --rad:18px;
+      --pad:18px;
+      --max:1100px;
+      --gap:18px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+    .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+    .hero{padding:30px 0;text-align:center}
+    .hero h1{margin:0 0 10px;font-size:clamp(28px,3.5vw,44px)}
+    .hero p{margin:0;color:var(--muted)}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:var(--pad)}
+    .card h2{margin:0 0 10px;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+    .spacer{height:var(--gap)}
+    #quasar-wrap{height:560px;border-radius:14px;overflow:hidden;background:#0b1218}
+    .bar{display:flex;gap:12px;flex-wrap:wrap}
+    .kv{flex:1 1 160px;display:flex;align-items:center;justify-content:space-between;
+        padding:12px 14px;border-radius:12px;background:#0b1218;border:1px solid var(--line)}
+    .tbl{width:100%;border-collapse:collapse}
+    .tbl th,.tbl td{border-bottom:1px solid var(--line);padding:10px 8px;text-align:left;font-size:14px}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+    section{margin-bottom:var(--gap)}
+    .tiles{display:grid;gap:var(--gap);grid-template-columns:1fr}
+    @media(min-width:760px){.tiles{grid-template-columns:repeat(3,1fr)}}
+    .tile{display:block;text-decoration:none;color:inherit}
+    .tile h3{margin:0 0 6px;font-size:16px}
+    .tile p{margin:0;color:var(--muted);font-size:14px}
+    footer{margin:24px 0 40px;text-align:center;color:var(--muted)}
+    footer a{color:var(--accent);text-decoration:none}
+    footer a:hover{text-decoration:underline}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <h1>Mine bitcoin with Hyper‑Hash pool</h1>
+      <p>Minimal, fast pool UI. Point your miner and hash.</p>
+    </section>
+
+    <section class="card">
+      <h2>Quasar</h2>
+      <div id="quasar-wrap"></div>
+    </section>
+
+    <section class="card">
+      <h2>Pool Status</h2>
+      <div class="bar">
+        <div class="kv"><span>Hashrate</span><strong id="ps-hash">—</strong></div>
+        <div class="kv"><span>Miners online</span><strong id="ps-miners">—</strong></div>
+        <div class="kv"><span>Round shares</span><strong id="ps-shares">—</strong></div>
+        <div class="kv"><span>24h blocks</span><strong id="ps-blocks">—</strong></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Stratum Endpoints</h2>
+      <table class="tbl">
+        <thead>
+          <tr><th>Lane</th><th>Protocol</th><th>Endpoint</th></tr>
+        </thead>
+        <tbody class="mono">
+          <tr><td>SV1</td><td>SV1</td><td>stratum+tcp://pool.hyper-hash.com:3333</td></tr>
+          <tr><td>SV1 Hyper</td><td>SV1</td><td>stratum+tcp://pool.hyper-hash.com:3334</td></tr>
+          <tr><td>SV2</td><td>SV2</td><td>stratum+tcp://pool.hyper-hash.com:3335</td></tr>
+          <tr><td>SV2 Hyper</td><td>SV2</td><td>stratum+tcp://pool.hyper-hash.com:3336</td></tr>
+        </tbody>
+      </table>
+      <div class="spacer"></div>
+      <div class="kv"><span>Miner login</span><span class="mono">&lt;address&gt;.workername  /  x</span></div>
+    </section>
+
+    <section class="card">
+      <h2>Miner Stats</h2>
+      <table class="tbl">
+        <thead>
+          <tr><th>Worker</th><th>Hashrate</th><th>Accepted</th><th>Rejected</th><th>Last Share</th></tr>
+        </thead>
+        <tbody id="miners-table">
+          <tr><td class="muted" colspan="5">No data (wire-up pending)</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="tiles">
+      <a class="tile card" href="#"><h3>Transparency</h3><p>Open fees, open-source components, on‑chain payouts.</p></a>
+      <a class="tile card" href="#"><h3>API</h3><p>REST + WebSocket endpoints for miners and dashboards.</p></a>
+      <a class="tile card" href="#"><h3>Why choose H#</h3><p>SV1 first, SV2 next, clean payouts: 2% pool fee.</p></a>
+      <a class="tile card" href="#"><h3>FAQ</h3><p>Connection, payouts, difficulty, and troubleshooting.</p></a>
+      <a class="tile card" href="#"><h3>Support</h3><p>Discord + email. Real humans, real responses.</p></a>
+      <a class="tile card" href="#"><h3>Status</h3><p>Pool uptime, hashrate, and incident history.</p></a>
+    </section>
+  </main>
+
+  <footer>
+    © 2025 Hyper‑Hash • <a href="#">GitHub</a> • <a href="#">Discord</a>
+  </footer>
+
+  <script src="quasar-race.js"></script>
+</body>
+</html>

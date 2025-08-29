@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Miner • Hyper‑Hash</title>
+  <meta name="description" content="Miner details for Hyper‑Hash pool."/>
+  <style>
+    :root{
+      color-scheme:dark;
+      --bg:#0b0d10;
+      --panel:#0f1419;
+      --ink:#e7edf3;
+      --muted:#8ea0b2;
+      --line:#14202c;
+      --accent:#7cd1ff;
+      --good:#41d17d;
+      --warn:#f2c14e;
+      --bad:#ff6b6b;
+      --rad:18px;
+      --pad:18px;
+      --max:1100px;
+      --gap:18px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+    .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+    a{color:var(--accent);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .topbar{display:flex;align-items:center;gap:12px;padding:16px 0 8px}
+    .back{border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:#111820;text-decoration:none}
+    h1{margin:6px 0 0;font-size:clamp(22px,3.2vw,34px)}
+    .muted{color:var(--muted)}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:var(--pad);margin: var(--gap) 0}
+    .card h2{margin:0 0 8px;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+    .grid{display:grid;gap:var(--gap);grid-template-columns:1fr}
+    @media(min-width:860px){.grid{grid-template-columns:2fr 1fr}}
+    .stats{display:grid;gap:12px;grid-template-columns:repeat(2,1fr)}
+    @media(min-width:600px){.stats{grid-template-columns:repeat(4,1fr)}}
+    .kv{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#0b1218;display:flex;justify-content:space-between}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+    .tbl{width:100%;border-collapse:collapse}
+    .tbl th,.tbl td{border-bottom:1px solid var(--line);padding:10px 8px;text-align:left;font-size:14px}
+    .pill{padding:2px 8px;border-radius:999px;border:1px solid #243545}
+    .hint{font-size:12px;color:var(--muted)}
+    .chart{height:220px;border:1px dashed #23303f;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#5b748c}
+    footer{margin:24px 0 40px;text-align:center;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="topbar">
+      <a class="back" href="index.html">← Back</a>
+      <div>
+        <div class="muted">Miner</div>
+        <h1 id="minerTitle" class="mono">—</h1>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="stats">
+        <div class="kv"><span>Current hashrate</span><strong id="m-hash">—</strong></div>
+        <div class="kv"><span>24h average</span><strong id="m-hash24">—</strong></div>
+        <div class="kv"><span>Accepted</span><strong id="m-acc">—</strong></div>
+        <div class="kv"><span>Rejected</span><strong id="m-rej">—</strong></div>
+      </div>
+      <div class="hint" style="margin-top:8px">Auto-refreshes every 30s.</div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Hashrate (last 24h)</h2>
+        <div id="hashChart" class="chart">Graph placeholder</div>
+      </div>
+      <div class="card">
+        <h2>Connection</h2>
+        <div class="kv"><span>Address</span><span id="m-addr" class="mono">—</span></div>
+        <div class="kv"><span>Workers</span><span id="m-workers">—</span></div>
+        <div class="kv"><span>Last share</span><span id="m-lastshare">—</span></div>
+        <div class="kv"><span>Difficulty</span><span id="m-diff">—</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Workers</h2>
+      <table class="tbl">
+        <thead><tr><th>Worker</th><th>Hashrate</th><th>Accepted</th><th>Rejected</th><th>Last Share</th></tr></thead>
+        <tbody id="workersBody"><tr><td class="muted" colspan="5">Loading…</td></tr></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Recent Shares</h2>
+      <table class="tbl">
+        <thead><tr><th>Time</th><th>Worker</th><th>Difficulty</th><th>Status</th></tr></thead>
+        <tbody id="sharesBody"><tr><td class="muted" colspan="4">Loading…</td></tr></tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>© 2025 Hyper‑Hash</footer>
+
+  <script>
+    // Helper: get query parameter
+    function qp(name){
+      const u = new URL(window.location.href);
+      return u.searchParams.get(name) || '';
+    }
+    const minerId = qp('id') || qp('address') || '';
+    document.getElementById('minerTitle').textContent = minerId || 'Unknown';
+
+    // Wire to your real API endpoints here:
+    const API = {
+      overview: id => `/api/miner/${encodeURIComponent(id)}`,
+      workers:  id => `/api/miner/${encodeURIComponent(id)}/workers`,
+      shares:   id => `/api/miner/${encodeURIComponent(id)}/shares?limit=50`
+    };
+
+    async function safeJson(url){
+      try { const r = await fetch(url); if(!r.ok) throw new Error(r.status); return await r.json(); }
+      catch(e){ return null; }
+    }
+
+    function fmt(num){
+      if(num == null || num === '-') return '—';
+      if(typeof num === 'number'){
+        if(Math.abs(num) >= 1e12) return (num/1e12).toFixed(2)+' TH/s';
+        if(Math.abs(num) >= 1e9) return (num/1e9).toFixed(2)+' GH/s';
+        if(Math.abs(num) >= 1e6) return (num/1e6).toFixed(2)+' MH/s';
+        if(Math.abs(num) >= 1e3) return (num/1e3).toFixed(2)+' kH/s';
+      }
+      return String(num);
+    }
+
+    async function load(){
+      if(!minerId) return;
+
+      // 1) Overview
+      let o = await safeJson(API.overview(minerId));
+      if(!o){
+        // Fallback demo data if API is not wired yet
+        o = {
+          address: minerId,
+          current_hashrate: 1.06e12,
+          avg24h: 1.02e12,
+          accepted: 12450,
+          rejected: 23,
+          last_share_at: new Date().toISOString(),
+          difficulty: 2048,
+          workers: [
+            {name: minerId+'.rig1', hashrate: 0.54e12, accepted: 6451, rejected: 12, last_share: new Date().toISOString()},
+            {name: minerId+'.rig2', hashrate: 0.52e12, accepted: 5999, rejected: 11, last_share: new Date().toISOString()}
+          ]
+        };
+      }
+      document.getElementById('m-hash').textContent = fmt(o.current_hashrate);
+      document.getElementById('m-hash24').textContent = fmt(o.avg24h);
+      document.getElementById('m-acc').textContent = o.accepted ?? '—';
+      document.getElementById('m-rej').textContent = o.rejected ?? '—';
+      document.getElementById('m-addr').textContent = o.address || minerId;
+      document.getElementById('m-workers').textContent = (o.workers && o.workers.length) || 0;
+      document.getElementById('m-lastshare').textContent = (o.last_share_at || '—').replace('T',' ').replace('Z','');
+      document.getElementById('m-diff').textContent = o.difficulty ?? '—';
+
+      // 2) Workers
+      let workers = await safeJson(API.workers(minerId));
+      if(!workers || !Array.isArray(workers) || !workers.length) workers = o.workers || [];
+      const wb = document.getElementById('workersBody');
+      wb.innerHTML = '';
+      if(!workers.length){
+        wb.innerHTML = '<tr><td class="muted" colspan="5">No workers</td></tr>';
+      } else {
+        workers.forEach(w=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="mono">${w.name}</td>
+                          <td>${fmt(w.hashrate)}</td>
+                          <td>${w.accepted ?? 0}</td>
+                          <td>${w.rejected ?? 0}</td>
+                          <td>${(w.last_share || '—').replace?.('T',' ').replace?.('Z','') || '—'}</td>`;
+          wb.appendChild(tr);
+        });
+      }
+
+      // 3) Shares
+      let shares = await safeJson(API.shares(minerId));
+      if(!shares || !Array.isArray(shares) || !shares.length){
+        shares = [
+          {time:new Date().toISOString(), worker:o.workers?.[0]?.name || (minerId+'.rig1'), diff:o.difficulty || 2048, status:'accepted'},
+          {time:new Date().toISOString(), worker:o.workers?.[1]?.name || (minerId+'.rig2'), diff:o.difficulty || 2048, status:'accepted'}
+        ];
+      }
+      const sb = document.getElementById('sharesBody');
+      sb.innerHTML = '';
+      shares.forEach(s=>{
+        const tr = document.createElement('tr');
+        const st = s.status || 'accepted';
+        const pill = `<span class="pill" style="border-color:${st==='accepted'?'#234b35':'#613236'};background:${st==='accepted'?'#10251a':'#221213'};color:${st==='accepted'?'#86e0a9':'#ffa2a2'}">${st}</span>`;
+        tr.innerHTML = `<td>${(s.time||'—').replace('T',' ').replace('Z','')}</td>
+                        <td class="mono">${s.worker||'—'}</td>
+                        <td>${s.diff||'—'}</td>
+                        <td>${pill}</td>`;
+        sb.appendChild(tr);
+      });
+    }
+
+    load();
+    setInterval(load, 30000);
+  </script>
+</body>
+</html>
