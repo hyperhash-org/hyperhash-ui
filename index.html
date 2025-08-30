@@ -31,7 +31,7 @@
       letter-spacing:.2px;
     }
     .hero p{margin:0;color:var(--muted);font-size:15px}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:var(--pad)}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:var(--pad);position:relative}
     .card h2{margin:0 0 10px;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
     .mini-h2{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
     .spacer{height:var(--gap)}
@@ -85,6 +85,32 @@
     /* Pool Status: fixed 3×2 grid */
     .ps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
     @media (max-width:760px){ .ps-grid{grid-template-columns:1fr} }
+
+    /* LIVE tag (thicker border) */
+    .live-pill{position:absolute;top:14px;right:14px;
+      font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+      padding:3px 10px;border-radius:999px;border:2px solid #264b36;background:#10251a;color:#86e0a9}
+
+    /* Lanes hashrate */
+    .rate-grid{display:grid;gap:16px;grid-template-columns:repeat(4,1fr)}
+    @media (max-width:1024px){ .rate-grid{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:560px){ .rate-grid{grid-template-columns:1fr} }
+    .lane-box{display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px}
+    .lane-label{font-weight:400}
+    .rate-pill{
+      display:flex;align-items:center;justify-content:flex-end;
+      width: 176px; /* compacted ~20% */
+      min-height: 44px;
+      padding:8px 12px;border-radius:12px;border:2px solid transparent;
+      background:#0b1218;box-shadow:none;
+    }
+    .rate-num{font-variant-numeric:tabular-nums;font-weight:400;color:#fff;font-size:18px;margin-right:4px}
+    .rate-unit{font-size:12px;color:#cbd5df}
+    /* lane-specific colors applied to both label + pill border */
+    .rate-sv1 .lane-label{color:#66d9ef} .rate-sv1 .rate-pill{border-color:#66d9ef}
+    .rate-sv1h .lane-label{color:#f92672} .rate-sv1h .rate-pill{border-color:#f92672}
+    .rate-sv2 .lane-label{color:#fd971f} .rate-sv2 .rate-pill{border-color:#fd971f}
+    .rate-sv2h .lane-label{color:#a6e22e} .rate-sv2h .rate-pill{border-color:#a6e22e}
   </style>
 </head>
 <body>
@@ -108,6 +134,42 @@
         <div class="kv"><span>24h blocks</span><strong id="ps-blocks">—</strong></div>
         <div class="kv"><span>Uptime</span><strong id="ps-uptime">—</strong></div>
         <div class="kv"><span>API</span><strong><span id="ps-api" class="pill">—</span></strong></div>
+      </div>
+    </section>
+
+    <!-- New: per-lane hashrate -->
+    <section class="card" id="lanes">
+      <h2>Hashrate</h2>
+      <span class="live-pill">Live</span>
+      <div class="rate-grid">
+        <div class="lane-box rate-sv1">
+          <div class="lane-label">SV1</div>
+          <div class="rate-pill">
+            <div class="rate-num" id="rate-sv1-num">—</div>
+            <div class="rate-unit" id="rate-sv1-unit"></div>
+          </div>
+        </div>
+        <div class="lane-box rate-sv1h">
+          <div class="lane-label">SV1 Hyper</div>
+          <div class="rate-pill">
+            <div class="rate-num" id="rate-sv1h-num">—</div>
+            <div class="rate-unit" id="rate-sv1h-unit"></div>
+          </div>
+        </div>
+        <div class="lane-box rate-sv2">
+          <div class="lane-label">SV2</div>
+          <div class="rate-pill">
+            <div class="rate-num" id="rate-sv2-num">—</div>
+            <div class="rate-unit" id="rate-sv2-unit"></div>
+          </div>
+        </div>
+        <div class="lane-box rate-sv2h">
+          <div class="lane-label">SV2 Hyper</div>
+          <div class="rate-pill">
+            <div class="rate-num" id="rate-sv2h-num">—</div>
+            <div class="rate-unit" id="rate-sv2h-unit"></div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -262,6 +324,39 @@
   setInterval(loadPool, 15000);
   </script>
 
+  <!-- Lanes hashrate wiring -->
+  <script>
+  function setLaneRate(key, ghs){
+    const txt = fmtRate(ghs);
+    const [num, unit] = String(txt).split(' ');
+    const nEl = document.getElementById('rate-'+key+'-num');
+    const uEl = document.getElementById('rate-'+key+'-unit');
+    if(nEl) nEl.textContent = num || '—';
+    if(uEl) uEl.textContent = unit || '';
+  }
+  async function loadLanes(){
+    try{
+      const res = await fetch('/api/lanes.json', { cache: 'no-store' });
+      if(!res.ok) throw new Error('bad status');
+      const d = await res.json();
+      setLaneRate('sv1',  d.sv1_ghs);
+      setLaneRate('sv1h', d.sv1h_ghs);
+      setLaneRate('sv2',  d.sv2_ghs);
+      setLaneRate('sv2h', d.sv2h_ghs);
+    } catch(e){
+      console.warn('lanes stats failed', e);
+      // leave previous values; no UI flip required
+    }
+  }
+  // seed with zeros so the pills aren't empty on first render
+  setLaneRate('sv1',  0);
+  setLaneRate('sv1h', 0);
+  setLaneRate('sv2',  0);
+  setLaneRate('sv2h', 0);
+  loadLanes();
+  setInterval(loadLanes, 10000);
+  </script>
+
   <!-- Miner search wiring -->
   <script>
   (function(){
@@ -282,6 +377,7 @@
   </script>
 </body>
 </html>
+
 
 
 
