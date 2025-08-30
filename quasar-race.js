@@ -1,4 +1,4 @@
-// Hyper-Hash Quasar — Legend-gated shell + axes with arrowheads (max zoom = 3000)
+// Hyper-Hash Quasar — legend-gated shell + axis arrowheads (max zoom = 3500)
 (function(){
   const mount = document.getElementById('quasar-wrap'); if(!mount) return;
 
@@ -24,12 +24,15 @@
   });
   wrap.appendChild(legendBtn);
 
-  // Lane legend (hidden until Legend ON or auto-show)
+  // Lane legend (vertical stack)
   const laneLegend = document.createElement('div');
   Object.assign(laneLegend.style, {
     position:'absolute', left:'16px', top:'54px', zIndex:'2',
-    display:'none', gap:'8px',
-    font:'12px system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial'
+    display:'none',
+    gap:'8px',
+    font:'12px system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial',
+    flexDirection:'column',  // vertical
+    width:'max-content'
   });
   const LCOL={SV1:'#66d9ef',SV1H:'#f92672',SV2:'#fd971f',SV2H:'#a6e22e'};
   function pill(txt,color){
@@ -38,7 +41,7 @@
     Object.assign(el.style,{
       display:'inline-block', padding:'2px 8px',
       border:'1px solid rgba(255,255,255,.08)', borderRadius:'999px',
-      marginRight:'6px', background:'rgba(10,16,22,.6)', color:color
+      background:'rgba(10,16,22,.6)', color:color
     });
     return el;
   }
@@ -67,8 +70,8 @@
   wrap.addEventListener('wheel', e=>{
     e.preventDefault();
     const d=Math.sign(e.deltaY);
-    zoom *= (1 - d*0.06);               // finer wheel step
-    zoom = Math.max(120, Math.min(3000, zoom)); // raise max zoom
+    zoom *= (1 - d*0.06);                 // finer step
+    zoom = Math.max(120, Math.min(3500, zoom)); // max zoom raised to 3500
   }, {passive:false});
 
   canvas.addEventListener('pointerdown', e=>{dragging=true; lx=e.clientX; ly=e.clientY;});
@@ -121,13 +124,12 @@
 
   legendBtn.addEventListener('click', ()=>{
     legendOn = !legendOn;
-    laneLegend.style.display = legendOn ? 'inline-flex' : 'none';
+    laneLegend.style.display = legendOn ? 'flex' : 'none'; // flex (vertical)
   });
 
-  // External hook (call this when a block event occurs)
   function autoShowLegendFor(ms){
     forcedLegendUntil = Date.now() + ms;
-    if(!legendOn) laneLegend.style.display='inline-flex';
+    if(!legendOn) { laneLegend.style.display='flex'; } // vertical
   }
 
   // ---- drawing helpers ------------------------------------------------------
@@ -156,15 +158,17 @@
     ctx.stroke();
   }
 
-  function drawShellAndAxes(time){
+  // different axis lengths: X (Nonce) shorter so it ends at the shell
+  const AXF = 1.02, AYF = 1.25, AZF = 1.25;
+
+  function drawShellAndAxes(){
     const showing = legendOn || (Date.now() < forcedLegendUntil);
     if(!showing){ laneLegend.style.display='none'; return; }
-    if(legendOn) laneLegend.style.display='inline-flex';
+    if(legendOn) laneLegend.style.display='flex';
 
     // Shell grid
     ctx.lineWidth = 1*DPR;
     strokeRGBA(34,52,71, SHELL_ALPHA);
-
     for(let j=1;j<=nlat;j++){
       const phi=-Math.PI/2+(j*(Math.PI/(nlat+1)));
       ctx.beginPath();
@@ -196,10 +200,10 @@
     ctx.lineWidth = 1.25*DPR;
     strokeRGBA(255,255,255, SHELL_ALPHA);
 
-    // world axes endpoints
-    const AX = [ R*1.25, 0, 0];   // +X (Nonce)
-    const AY = [ 0, R*1.25, 0];   // +Y (Time)
-    const AZ = [ 0, 0, R*1.25];   // +Z (Merkle)
+    const AX = [ R*AXF, 0, 0];   // +X (Nonce) — shorter
+    const AY = [ 0, R*AYF, 0];   // +Y (Time)
+    const AZ = [ 0, 0, R*AZF];   // +Z (Merkle)
+
     const O  = proj(...rotXYZ(0,0,0));
     const PX = proj(...rotXYZ(...AX));
     const PY = proj(...rotXYZ(...AY));
@@ -219,13 +223,12 @@
   }
 
   // ---- render loop ----------------------------------------------------------
-  function render(time){
+  function render(){
     ctx.setTransform(1,0,0,1,0,0);
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
     yaw += 0.0016;
 
-    // advance dots
     for(let i=0;i<dots.length;i++){ const d=dots[i]; d.cur+=(d.r-d.cur)*0.04; }
     const pts = dots.map(d=>{
       const [dx,dy,dz]=d.dir;
@@ -235,7 +238,6 @@
       return { z:Rw[2], X:P[0], Y:P[1], s:P[2]*d.size*DPR, col:d.col, r:d.r };
     }).sort((a,b)=>a.z-b.z);
 
-    // draw dots
     ctx.globalCompositeOperation='lighter';
     for(const p of pts){
       const ob=Math.min(1,Math.max(0,(p.r-1.4)/0.6));
@@ -248,8 +250,7 @@
     ctx.globalAlpha=1;
     ctx.globalCompositeOperation='source-over';
 
-    // shell + axes (only when legend showing)
-    drawShellAndAxes(time||0);
+    drawShellAndAxes();
 
     requestAnimationFrame(render);
   }
@@ -259,8 +260,8 @@
   window.HH_QUASAR = window.HH_QUASAR || {};
   window.HH_QUASAR.blockEvent = function({poolWon=false}){
     autoShowLegendFor(20000);
-    // You can also change colors on win/lose here if you want in the future.
   };
 })();
+
 
 
