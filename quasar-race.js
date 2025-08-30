@@ -31,7 +31,7 @@
     display:'none',
     gap:'8px',
     font:'12px system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial',
-    flexDirection:'column',  // vertical
+    flexDirection:'column',
     width:'max-content'
   });
   const LCOL={SV1:'#66d9ef',SV1H:'#f92672',SV2:'#fd971f',SV2H:'#a6e22e'};
@@ -71,7 +71,7 @@
     e.preventDefault();
     const d=Math.sign(e.deltaY);
     zoom *= (1 - d*0.06);                 // finer step
-    zoom = Math.max(120, Math.min(3500, zoom)); // max zoom raised to 3500
+    zoom = Math.max(120, Math.min(3500, zoom)); // max zoom
   }, {passive:false});
 
   canvas.addEventListener('pointerdown', e=>{dragging=true; lx=e.clientX; ly=e.clientY;});
@@ -124,12 +124,12 @@
 
   legendBtn.addEventListener('click', ()=>{
     legendOn = !legendOn;
-    laneLegend.style.display = legendOn ? 'flex' : 'none'; // flex (vertical)
+    laneLegend.style.display = legendOn ? 'flex' : 'none'; // vertical
   });
 
   function autoShowLegendFor(ms){
     forcedLegendUntil = Date.now() + ms;
-    if(!legendOn) { laneLegend.style.display='flex'; } // vertical
+    if(!legendOn) { laneLegend.style.display='flex'; }
   }
 
   // ---- drawing helpers ------------------------------------------------------
@@ -137,13 +137,13 @@
   function fillRGBA(r,g,b,a){ ctx.fillStyle=`rgba(${r},${g},${b},${a})`; }
 
   // Arrow from (x0,y0) to (x1,y1) with perspective-scaled head
-  // CHANGE: tip pulled back ~10px so the head never escapes the shell.
+  // tip pulled back so the head never escapes the shell.
   function drawArrow(x0,y0,x1,y1, scaleHint){
     const dx=x1-x0, dy=y1-y0;
     const len=Math.hypot(dx,dy) || 1;
     const ux=dx/len,  uy=dy/len;
 
-    const tipBack = 10 * DPR;           // <- pullback inside shell
+    const tipBack = 12 * DPR;            // increased from 10*DPR
     const tipX = x1 - ux*tipBack;
     const tipY = y1 - uy*tipBack;
 
@@ -163,8 +163,8 @@
     ctx.stroke();
   }
 
-  // Axis lengths (keep X short; shorten Z so it stays inside the shell)
-  const AXF = 1.02, AYF = 1.25, AZF = 1.02;  // <- Z was 1.25 before
+  // Axis lengths (all slightly >R, but short enough to stay inside)
+  const AXF = 1.02, AYF = 1.02, AZF = 1.02;
 
   function drawShellAndAxes(){
     const showing = legendOn || (Date.now() < forcedLegendUntil);
@@ -205,9 +205,9 @@
     ctx.lineWidth = 1.25*DPR;
     strokeRGBA(255,255,255, SHELL_ALPHA);
 
-    const AX = [ R*AXF, 0, 0];   // +X (Nonce) — shorter
+    const AX = [ R*AXF, 0, 0];   // +X (Nonce)
     const AY = [ 0, R*AYF, 0];   // +Y (Time)
-    const AZ = [ 0, 0, R*AZF];   // +Z (Merkle) — shorter now
+    const AZ = [ 0, 0, R*AZF];   // +Z (Merkle)
 
     const O  = proj(...rotXYZ(0,0,0));
     const PX = proj(...rotXYZ(...AX));
@@ -267,6 +267,7 @@
     autoShowLegendFor(20000);
   };
 })();
+
 
 
 
