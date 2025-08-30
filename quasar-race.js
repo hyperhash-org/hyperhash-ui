@@ -137,13 +137,18 @@
   function fillRGBA(r,g,b,a){ ctx.fillStyle=`rgba(${r},${g},${b},${a})`; }
 
   // Arrow from (x0,y0) to (x1,y1) with perspective-scaled head
+  // CHANGE: tip pulled back ~10px so the head never escapes the shell.
   function drawArrow(x0,y0,x1,y1, scaleHint){
-    ctx.beginPath();
-    ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
-
     const dx=x1-x0, dy=y1-y0;
     const len=Math.hypot(dx,dy) || 1;
     const ux=dx/len,  uy=dy/len;
+
+    const tipBack = 10 * DPR;           // <- pullback inside shell
+    const tipX = x1 - ux*tipBack;
+    const tipY = y1 - uy*tipBack;
+
+    ctx.beginPath();
+    ctx.moveTo(x0,y0); ctx.lineTo(tipX,tipY); ctx.stroke();
 
     const L = Math.max(8, 14 * (scaleHint||1)) * DPR; // head length
     const cos= Math.cos(0.49), sin=Math.sin(0.49);     // ~28°
@@ -151,15 +156,15 @@
     const rx2 =  ux*cos -  uy*sin, ry2 =  ux*sin +  uy*cos;
 
     ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x1 - rx1*L, y1 - ry1*L);
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x1 - rx2*L, y1 - ry2*L);
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(tipX - rx1*L, tipY - ry1*L);
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(tipX - rx2*L, tipY - ry2*L);
     ctx.stroke();
   }
 
-  // different axis lengths: X (Nonce) shorter so it ends at the shell
-  const AXF = 1.02, AYF = 1.25, AZF = 1.25;
+  // Axis lengths (keep X short; shorten Z so it stays inside the shell)
+  const AXF = 1.02, AYF = 1.25, AZF = 1.02;  // <- Z was 1.25 before
 
   function drawShellAndAxes(){
     const showing = legendOn || (Date.now() < forcedLegendUntil);
@@ -202,7 +207,7 @@
 
     const AX = [ R*AXF, 0, 0];   // +X (Nonce) — shorter
     const AY = [ 0, R*AYF, 0];   // +Y (Time)
-    const AZ = [ 0, 0, R*AZF];   // +Z (Merkle)
+    const AZ = [ 0, 0, R*AZF];   // +Z (Merkle) — shorter now
 
     const O  = proj(...rotXYZ(0,0,0));
     const PX = proj(...rotXYZ(...AX));
@@ -262,6 +267,7 @@
     autoShowLegendFor(20000);
   };
 })();
+
 
 
 
