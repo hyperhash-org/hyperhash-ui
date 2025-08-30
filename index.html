@@ -46,6 +46,13 @@
     footer{margin:24px 0 40px;text-align:center;color:var(--muted)}
     footer a{color:var(--accent);text-decoration:none}
     footer a:hover{text-decoration:underline}
+
+    /* Quasar lane colors for the Stratum table */
+    .lane{font-weight:600}
+    .lane-sv1{color:#66d9ef}   /* SV1 */
+    .lane-sv1h{color:#f92672}  /* SV1 Hyper */
+    .lane-sv2{color:#fd971f}   /* SV2 */
+    .lane-sv2h{color:#a6e22e}  /* SV2 Hyper */
   </style>
 </head>
 <body>
@@ -77,10 +84,26 @@
           <tr><th>Lane</th><th>Protocol</th><th>Endpoint</th></tr>
         </thead>
         <tbody class="mono">
-          <tr><td>SV1</td><td>SV1</td><td>stratum+tcp://pool.hyper-hash.com:3333</td></tr>
-          <tr><td>SV1 Hyper</td><td>SV1</td><td>stratum+tcp://pool.hyper-hash.com:3334</td></tr>
-          <tr><td>SV2</td><td>SV2</td><td>stratum+tcp://pool.hyper-hash.com:3335</td></tr>
-          <tr><td>SV2 Hyper</td><td>SV2</td><td>stratum+tcp://pool.hyper-hash.com:3336</td></tr>
+          <tr>
+            <td class="lane lane-sv1">SV1</td>
+            <td>SV1</td>
+            <td>stratum+tcp://pool.hyper-hash.com:3333</td>
+          </tr>
+          <tr>
+            <td class="lane lane-sv1h">SV1 Hyper</td>
+            <td>SV1</td>
+            <td>stratum+tcp://pool.hyper-hash.com:3334</td>
+          </tr>
+          <tr>
+            <td class="lane lane-sv2">SV2</td>
+            <td>SV2</td>
+            <td>stratum+tcp://pool.hyper-hash.com:3335</td>
+          </tr>
+          <tr>
+            <td class="lane lane-sv2h">SV2 Hyper</td>
+            <td>SV2</td>
+            <td>stratum+tcp://pool.hyper-hash.com:3336</td>
+          </tr>
         </tbody>
       </table>
       <div class="spacer"></div>
@@ -179,5 +202,6 @@
   </script>
 </body>
 </html>
+
 
 
