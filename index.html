@@ -28,6 +28,7 @@
     .hero p{margin:0;color:var(--muted)}
     .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:var(--pad)}
     .card h2{margin:0 0 10px;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+    .mini-h2{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)} /* same look as h2 */
     .spacer{height:var(--gap)}
     #quasar-wrap{height:560px;border-radius:14px;overflow:hidden;background:#0b1218}
     .bar{display:flex;gap:12px;flex-wrap:wrap}
@@ -53,6 +54,20 @@
     .lane-sv1h{color:#f92672}  /* SV1 Hyper */
     .lane-sv2{color:#fd971f}   /* SV2 */
     .lane-sv2h{color:#a6e22e}  /* SV2 Hyper */
+
+    /* Miner login row with three even columns */
+    .login-row{
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr;
+      gap:12px;
+      align-items:center;
+      padding:12px 14px;
+      border-radius:12px;
+      background:#0b1218;
+      border:1px solid var(--line);
+    }
+    .login-row .syntax{justify-self:center}
+    .login-row .example{justify-self:end;color:var(--muted)}
   </style>
 </head>
 <body>
@@ -106,8 +121,15 @@
           </tr>
         </tbody>
       </table>
+
       <div class="spacer"></div>
-      <div class="kv"><span>Miner login</span><span class="mono">&lt;address&gt;.workername  /  x</span></div>
+
+      <!-- Redesigned Miner login row -->
+      <div class="login-row">
+        <div class="mini-h2">Miner login</div>
+        <div class="mono syntax">&lt;address&gt;.workername&nbsp;&nbsp;/&nbsp;&nbsp;x</div>
+        <div class="example">(e.g. <span class="mono">bc1q123... .rig-01&nbsp;/&nbsp;x</span>)</div>
+      </div>
     </section>
 
     <section class="card">
@@ -202,6 +224,7 @@
   </script>
 </body>
 </html>
+
 
 
 
