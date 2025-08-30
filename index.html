@@ -81,6 +81,10 @@
     }
     .pill-ok{border-color:#224a36;background:#10251a;color:#86e0a9}
     .pill-err{border-color:#4a2222;background:#251010;color:#ff8e8e}
+
+    /* Pool Status: fixed 3×2 grid */
+    .ps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    @media (max-width:760px){ .ps-grid{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
@@ -97,7 +101,7 @@
 
     <section class="card">
       <h2>Pool Status</h2>
-      <div class="bar">
+      <div class="ps-grid">
         <div class="kv"><span>Hashrate</span><strong id="ps-hash">—</strong></div>
         <div class="kv"><span>Miners online</span><strong id="ps-miners">—</strong></div>
         <div class="kv"><span>Round shares</span><strong id="ps-shares">—</strong></div>
@@ -278,5 +282,6 @@
   </script>
 </body>
 </html>
+
 
 
