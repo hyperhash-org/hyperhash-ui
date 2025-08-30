@@ -1,0 +1,33 @@
+﻿<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FAQ • Hyper-Hash</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<style>
+:root{color-scheme:dark;--bg:#0b0d10;--panel:#0f1419;--ink:#e7edf3;--muted:#8ea0b2;--line:#14202c;--accent:#7cd1ff;--rad:18px;--pad:18px;--max:900px}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+.top{display:flex;align-items:center;gap:12px;padding:22px 0 8px}
+.back{border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:#111820;text-decoration:none;color:var(--ink)}
+h1{margin:6px 0 4px;font-size:28px;font-weight:600}
+.muted{color:var(--muted)} .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:var(--pad);margin:16px 0}
+h2{margin:0 0 8px;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+details{background:#0b1218;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0}
+summary{cursor:pointer;font-weight:600}
+footer{margin:28px 0 40px;text-align:center;color:var(--muted)} footer a{color:var(--accent);text-decoration:none}
+</style></head><body>
+<main class="wrap">
+  <div class="top"><a class="back" href="index.html">← Back</a><div><div class="muted">Help</div><h1>FAQ</h1></div></div>
+
+  <section class="card">
+    <h2>Common questions</h2>
+    <details><summary>How do I connect?</summary><p>Pick a lane from Stratum Endpoints on the homepage. Username: <span class="mono">&lt;address&gt;.workername</span> Password: <span class="mono">x</span>.</p></details>
+    <details><summary>When do I get paid?</summary><p>Payout method and schedule shown on the Transparency page.</p></details>
+    <details><summary>What fees do you charge?</summary><p>2% pool fee.</p></details>
+    <details><summary>Why is my hashrate different?</summary><p>Pool vs. miner reporting can differ due to averaging windows and rejects.</p></details>
+    <details><summary>What do “accepted” and “rejected” mean?</summary><p>Accepted shares counted towards rewards; rejected are stale/invalid.</p></details>
+    <details><summary>Where can I see my stats?</summary><p>Use the search box on the homepage or open <span class="mono">/miner.html?address=&lt;your-address&gt;</span>.</p></details>
+  </section>
+</main>
+<footer>© 2025 Hyper-Hash • <a href="https://github.com/caldefenwycke" target="_blank" rel="noopener">GitHub</a> • <a href="https://discord.gg/ayHp3SFJ" target="_blank" rel="noopener">Discord</a></footer>
+</body></html>

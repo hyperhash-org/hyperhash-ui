@@ -1,0 +1,48 @@
+﻿<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>API • Hyper-Hash</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<style>
+:root{color-scheme:dark;--bg:#0b0d10;--panel:#0f1419;--ink:#e7edf3;--muted:#8ea0b2;--line:#14202c;--accent:#7cd1ff;--rad:18px;--pad:18px;--max:900px}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+.top{display:flex;align-items:center;gap:12px;padding:22px 0 8px}
+.back{border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:#111820;text-decoration:none;color:var(--ink)}
+h1{margin:6px 0 4px;font-size:28px;font-weight:600}
+.muted{color:var(--muted)} .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:var(--pad);margin:16px 0}
+h2{margin:0 0 8px;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+footer{margin:28px 0 40px;text-align:center;color:var(--muted)} footer a{color:var(--accent);text-decoration:none}
+code{background:#0b1218;border:1px solid var(--line);padding:2px 6px;border-radius:6px}
+</style></head><body>
+<main class="wrap">
+  <div class="top"><a class="back" href="index.html">← Back</a><div><div class="muted">Docs</div><h1>API</h1></div></div>
+
+  <section class="card">
+    <h2>REST</h2>
+    <p class="mono">GET /api/pool.json</p>
+    <p class="mono">GET /api/miner/&lt;address&gt;.json</p>
+    <p class="mono">GET /api/miner/&lt;address&gt;/workers.json</p>
+    <p class="mono">GET /api/miner/&lt;address&gt;/shares.json?since=&lt;iso&gt;</p>
+    <p class="mono">GET /api/blocks.json</p>
+  </section>
+
+  <section class="card">
+    <h2>WebSocket</h2>
+    <p class="mono">wss://api.hh-pool.org/events</p>
+    <p>Messages:</p>
+    <pre class="mono">{"type":"share","lane":"SV1","address":"…","ratio":0.42}
+{"type":"block","lane":"SV1","pool":"HH","height":…, "hash":"…"}</pre>
+  </section>
+
+  <section class="card">
+    <h2>Notes</h2>
+    <ul>
+      <li>CORS: GET allowed for public endpoints.</li>
+      <li>Rate limiting: to be documented as endpoints go live.</li>
+    </ul>
+  </section>
+</main>
+<footer>© 2025 Hyper-Hash • <a href="https://github.com/caldefenwycke" target="_blank" rel="noopener">GitHub</a> • <a href="https://discord.gg/ayHp3SFJ" target="_blank" rel="noopener">Discord</a></footer>
+</body></html>

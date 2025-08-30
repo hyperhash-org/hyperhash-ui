@@ -1,0 +1,50 @@
+﻿<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Transparency • Hyper-Hash</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<style>
+:root{color-scheme:dark;--bg:#0b0d10;--panel:#0f1419;--ink:#e7edf3;--muted:#8ea0b2;--line:#14202c;--accent:#7cd1ff;--rad:18px;--pad:18px;--max:900px}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+.top{display:flex;align-items:center;gap:12px;padding:22px 0 8px}
+.back{border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:#111820;text-decoration:none;color:var(--ink)}
+h1{margin:6px 0 4px;font-size:28px;font-weight:600}
+.muted{color:var(--muted)} .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:var(--pad);margin:16px 0}
+h2{margin:0 0 8px;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+ul{margin:8px 0 0 18px}
+footer{margin:28px 0 40px;text-align:center;color:var(--muted)} footer a{color:var(--accent);text-decoration:none}
+</style></head><body>
+<main class="wrap">
+  <div class="top"><a class="back" href="index.html">← Back</a><div><div class="muted">Docs</div><h1>Transparency</h1></div></div>
+
+  <section class="card">
+    <h2>Fees & payout policy</h2>
+    <p>Pool fee: <strong>2%</strong>. Payout method: <em>PPLNS</em> (configurable later). Minimum payout threshold and schedule will be shown here.</p>
+  </section>
+
+  <section class="card">
+    <h2>On-chain proof</h2>
+    <p>We publish payout addresses and transactions. Example (placeholder):</p>
+    <ul>
+      <li>Payout wallet: <span class="mono">bc1q…</span> (view on mempool.space)</li>
+      <li>Recent TXIDs will be listed from <span class="mono">/api/payouts.json</span>.</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>How rewards are calculated</h2>
+    <p>We document the window, share weighting, and distribution formula with a worked example.</p>
+  </section>
+
+  <section class="card">
+    <h2>Open-source components</h2>
+    <ul>
+      <li>UI: <a href="https://github.com/caldefenwycke/hyperhash-ui" target="_blank" rel="noopener">hyperhash-ui</a></li>
+      <li>More repos will be linked as they are published.</li>
+    </ul>
+  </section>
+</main>
+<footer>© 2025 Hyper-Hash • <a href="https://github.com/caldefenwycke" target="_blank" rel="noopener">GitHub</a> • <a href="https://discord.gg/ayHp3SFJ" target="_blank" rel="noopener">Discord</a></footer>
+</body></html>

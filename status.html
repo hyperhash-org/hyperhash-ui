@@ -1,0 +1,53 @@
+﻿<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Status • Hyper-Hash</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<style>
+:root{color-scheme:dark;--bg:#0b0d10;--panel:#0f1419;--ink:#e7edf3;--muted:#8ea0b2;--line:#14202c;--accent:#7cd1ff;--rad:18px;--pad:18px;--max:900px}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+.top{display:flex;align-items:center;gap:12px;padding:22px 0 8px}
+.back{border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:#111820;text-decoration:none;color:var(--ink)}
+h1{margin:6px 0 4px;font-size:28px;font-weight:600}
+.muted{color:var(--muted)} .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:var(--pad);margin:16px 0}
+h2{margin:0 0 8px;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.grid{display:grid;gap:16px;grid-template-columns:1fr} @media(min-width:820px){.grid{grid-template-columns:1fr 1fr}}
+.kv{display:flex;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#0b1218}
+footer{margin:28px 0 40px;text-align:center;color:var(--muted)} footer a{color:var(--accent);text-decoration:none}
+</style></head><body>
+<main class="wrap">
+  <div class="top"><a class="back" href="index.html">← Back</a><div><div class="muted">Health</div><h1>Status</h1></div></div>
+
+  <section class="card">
+    <h2>Live</h2>
+    <div class="grid">
+      <div class="kv"><span>Pool hashrate</span><strong id="st-hash">—</strong></div>
+      <div class="kv"><span>Miners online</span><strong id="st-miners">—</strong></div>
+      <div class="kv"><span>Round shares</span><strong id="st-shares">—</strong></div>
+      <div class="kv"><span>24h blocks</span><strong id="st-blocks">—</strong></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Incidents</h2>
+    <p>History will be listed here.</p>
+  </section>
+</main>
+<footer>© 2025 Hyper-Hash • <a href="https://github.com/caldefenwycke" target="_blank" rel="noopener">GitHub</a> • <a href="https://discord.gg/ayHp3SFJ" target="_blank" rel="noopener">Discord</a></footer>
+
+<script>
+async function loadPool(){
+  try{
+    const r = await fetch('api/pool.json',{cache:'no-store'});
+    const d = await r.json();
+    const fmt=(g)=>g>=1e6? (g/1e6).toFixed(2)+' PH/s' : g>=1e3? (g/1e3).toFixed(2)+' TH/s' : Math.round(g).toLocaleString()+' GH/s';
+    document.getElementById('st-hash').textContent=fmt(d.hashrate_ghs||0);
+    document.getElementById('st-miners').textContent=d.miners_online??'—';
+    document.getElementById('st-shares').textContent=(d.round_shares||0).toLocaleString();
+    document.getElementById('st-blocks').textContent=d.blocks_24h??0;
+  }catch(e){console.error(e)}
+}
+loadPool(); setInterval(loadPool,15000);
+</script>
+</body></html>
