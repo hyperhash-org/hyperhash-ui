@@ -73,6 +73,14 @@
     }
     .login-row .syntax{justify-self:center}
     .login-row .example{justify-self:end;color:var(--muted)}
+
+    /* API watchdog pill */
+    .pill{
+      display:inline-block; padding:2px 10px; border-radius:999px;
+      border:1px solid #243545; background:#14202c; font-size:12px
+    }
+    .pill-ok{border-color:#224a36;background:#10251a;color:#86e0a9}
+    .pill-err{border-color:#4a2222;background:#251010;color:#ff8e8e}
   </style>
 </head>
 <body>
@@ -94,6 +102,8 @@
         <div class="kv"><span>Miners online</span><strong id="ps-miners">—</strong></div>
         <div class="kv"><span>Round shares</span><strong id="ps-shares">—</strong></div>
         <div class="kv"><span>24h blocks</span><strong id="ps-blocks">—</strong></div>
+        <div class="kv"><span>Uptime</span><strong id="ps-uptime">—</strong></div>
+        <div class="kv"><span>API</span><strong><span id="ps-api" class="pill">—</span></strong></div>
       </div>
     </section>
 
@@ -183,26 +193,65 @@
   -->
   <script src="quasar-race.js"></script>
 
-  <!-- Pool stats wiring -->
+  <!-- Pool stats + uptime + API watchdog -->
   <script>
+  let uptimeTimer = null, uptimeSec = null;
+
+  function fmtRate(ghs){
+    if (!ghs && ghs !== 0) return '—';
+    if (ghs >= 1e6) return (ghs/1e6).toFixed(2) + ' PH/s';
+    if (ghs >= 1e3) return (ghs/1e3).toFixed(2) + ' TH/s';
+    return Math.round(ghs).toLocaleString() + ' GH/s';
+  }
+  function fmtUptime(sec){
+    if (sec == null) return '—';
+    const s = Math.max(0, Math.floor(sec));
+    const d = Math.floor(s/86400);
+    const h = Math.floor((s%86400)/3600);
+    const m = Math.floor((s%3600)/60);
+    const ss = s%60;
+    const pad = n=>String(n).padStart(2,'0');
+    return (d? d+'d ':'') + pad(h)+':'+pad(m)+':'+pad(ss);
+  }
+  function setApi(statusOK){
+    const el = document.getElementById('ps-api');
+    el.textContent = statusOK ? 'OK' : 'ERROR';
+    el.className = 'pill ' + (statusOK ? 'pill-ok' : 'pill-err');
+  }
+  function startUptime(sec){
+    uptimeSec = (typeof sec === 'number') ? Math.max(0, sec|0) : null;
+    const out = document.getElementById('ps-uptime');
+    if (uptimeTimer) clearInterval(uptimeTimer);
+    if (uptimeSec == null){ out.textContent = '—'; return; }
+    const tick = ()=>{ out.textContent = fmtUptime(uptimeSec); uptimeSec++; };
+    tick(); uptimeTimer = setInterval(tick, 1000);
+  }
+
   async function loadPool(){
     try{
       const res = await fetch('/api/pool.json', { cache: 'no-store' });
+      if(!res.ok) throw new Error('bad status');
       const d = await res.json();
 
-      const fmtRate = (ghs) => {
-        if (!ghs && ghs !== 0) return '—';
-        if (ghs >= 1e6) return (ghs/1e6).toFixed(2) + ' PH/s';
-        if (ghs >= 1e3) return (ghs/1e3).toFixed(2) + ' TH/s';
-        return Math.round(ghs).toLocaleString() + ' GH/s';
-      };
+      // API watchdog
+      setApi(true);
 
+      // pool tiles
       document.getElementById('ps-hash').textContent   = fmtRate(d.hashrate_ghs || 0);
       document.getElementById('ps-miners').textContent = (d.miners_online ?? '—');
       document.getElementById('ps-shares').textContent = (d.round_shares || 0).toLocaleString();
       document.getElementById('ps-blocks').textContent = (d.blocks_24h ?? 0);
+
+      // uptime
+      if (typeof d.uptime_seconds === 'number') {
+        startUptime(d.uptime_seconds);
+      } else {
+        startUptime(null);
+      }
     } catch (e){
       console.error('pool stats failed', e);
+      setApi(false);
+      // keep previous numbers; only flip API pill
     }
   }
   loadPool();
@@ -215,7 +264,6 @@
     const q = document.getElementById('minerQ');
     const go = document.getElementById('minerGo');
     if(!q || !go) return;
-
     function nav(){
       const v = (q.value || '').trim();
       if(!v) return;
@@ -224,11 +272,11 @@
         : `miner.html?address=${encodeURIComponent(v)}`;
       window.location.href = url;
     }
-
     go.addEventListener('click', nav);
     q.addEventListener('keydown', e => { if(e.key === 'Enter') nav(); });
   })();
   </script>
 </body>
 </html>
+
 
