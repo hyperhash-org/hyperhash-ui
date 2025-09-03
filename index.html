@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Hyper-Hash Pool</title>
   <meta name="description" content="Hyper-Hash Bitcoin mining pool — fast, minimal UI."/>
+
   <link rel="icon" href="favicon.png" type="image/png">
+
   <style>
     :root{
       color-scheme:dark;
@@ -99,7 +101,7 @@
     .lane-label{font-weight:400}
     .rate-pill{
       display:flex;align-items:center;justify-content:flex-end;
-      width: 176px; /* compacted ~20% */
+      width: 176px;
       min-height: 44px;
       padding:8px 12px;border-radius:12px;border:2px solid transparent;
       background:#0b1218;box-shadow:none;
@@ -137,7 +139,7 @@
       </div>
     </section>
 
-    <!-- New: per-lane hashrate -->
+    <!-- Per-lane hashrate -->
     <section class="card" id="lanes">
       <h2>Hashrate</h2>
       <span class="live-pill">Live</span>
@@ -264,7 +266,7 @@
   let uptimeTimer = null, uptimeSec = null;
 
   function fmtRate(ghs){
-    if (!ghs && ghs !== 0) return '—';
+    if (ghs == null) return '—';
     if (ghs >= 1e6) return (ghs/1e6).toFixed(2) + ' PH/s';
     if (ghs >= 1e3) return (ghs/1e3).toFixed(2) + ' TH/s';
     return Math.round(ghs).toLocaleString() + ' GH/s';
@@ -285,10 +287,10 @@
     el.className = 'pill ' + (statusOK ? 'pill-ok' : 'pill-err');
   }
   function startUptime(sec){
-    uptimeSec = (typeof sec === 'number') ? Math.max(0, sec|0) : null;
     const out = document.getElementById('ps-uptime');
     if (uptimeTimer) clearInterval(uptimeTimer);
-    if (uptimeSec == null){ out.textContent = '—'; return; }
+    if (typeof sec !== 'number'){ out.textContent = '—'; uptimeSec = null; return; }
+    uptimeSec = Math.max(0, sec|0);
     const tick = ()=>{ out.textContent = fmtUptime(uptimeSec); uptimeSec++; };
     tick(); uptimeTimer = setInterval(tick, 1000);
   }
@@ -299,32 +301,33 @@
       if(!res.ok) throw new Error('bad status');
       const d = await res.json();
 
-      // API watchdog
       setApi(true);
 
-      // pool tiles
-      document.getElementById('ps-hash').textContent   = fmtRate(d.hashrate_ghs || 0);
+      // header tiles (prefer GH/s; fallback to H/s -> GH/s)
+      const hdrG = (typeof d.hashrate_ghs === 'number') ? d.hashrate_ghs
+                   : (typeof d.hashrate === 'number') ? Math.round(d.hashrate/1e9)
+                   : 0;
+      document.getElementById('ps-hash').textContent   = fmtRate(hdrG);
       document.getElementById('ps-miners').textContent = (d.miners_online ?? '—');
       document.getElementById('ps-shares').textContent = (d.round_shares || 0).toLocaleString();
       document.getElementById('ps-blocks').textContent = (d.blocks_24h ?? 0);
 
-      // uptime
-      if (typeof d.uptime_seconds === 'number') {
-        startUptime(d.uptime_seconds);
-      } else {
-        startUptime(null);
-      }
+      // uptime (accept multiple api spellings)
+      const up = (typeof d.uptime === 'number') ? d.uptime
+              : (typeof d.uptime_sec === 'number') ? d.uptime_sec
+              : (typeof d.uptime_seconds === 'number') ? d.uptime_seconds
+              : null;
+      startUptime(up);
     } catch (e){
       console.error('pool stats failed', e);
       setApi(false);
-      // keep previous numbers; only flip API pill
     }
   }
   loadPool();
   setInterval(loadPool, 15000);
   </script>
 
-  <!-- Lanes hashrate wiring -->
+  <!-- Lanes hashrate wiring (reads from pool.json) -->
   <script>
   function setLaneRate(key, ghs){
     const txt = fmtRate(ghs);
@@ -334,25 +337,31 @@
     if(nEl) nEl.textContent = num || '—';
     if(uEl) uEl.textContent = unit || '';
   }
+
+  function laneGhs(d, key){
+    const lanes = d.lanes || {};
+    const lane  = lanes[key] || lanes[key.toUpperCase()] || lanes[key.toLowerCase()] || {};
+    if (typeof lane.hashrate_ghs === 'number') return lane.hashrate_ghs;
+    if (typeof lane.hashrate === 'number')     return lane.hashrate;     // we publish GH/s here too
+    if (typeof lane.hashrate_hs === 'number')  return Math.round(lane.hashrate_hs/1e9);
+    return 0;
+  }
+
   async function loadLanes(){
     try{
-      const res = await fetch('/api/lanes.json', { cache: 'no-store' });
+      const res = await fetch('/api/pool.json', { cache: 'no-store' });
       if(!res.ok) throw new Error('bad status');
       const d = await res.json();
-      setLaneRate('sv1',  d.sv1_ghs);
-      setLaneRate('sv1h', d.sv1h_ghs);
-      setLaneRate('sv2',  d.sv2_ghs);
-      setLaneRate('sv2h', d.sv2h_ghs);
+
+      setLaneRate('sv1',  laneGhs(d,'SV1'));
+      setLaneRate('sv1h', laneGhs(d,'SV1H'));
+      setLaneRate('sv2',  laneGhs(d,'SV2'));
+      setLaneRate('sv2h', laneGhs(d,'SV2H'));
     } catch(e){
       console.warn('lanes stats failed', e);
-      // leave previous values; no UI flip required
     }
   }
-  // seed with zeros so the pills aren't empty on first render
-  setLaneRate('sv1',  0);
-  setLaneRate('sv1h', 0);
-  setLaneRate('sv2',  0);
-  setLaneRate('sv2h', 0);
+  setLaneRate('sv1',0); setLaneRate('sv1h',0); setLaneRate('sv2',0); setLaneRate('sv2h',0);
   loadLanes();
   setInterval(loadLanes, 10000);
   </script>
@@ -377,7 +386,3 @@
   </script>
 </body>
 </html>
-
-
-
-
