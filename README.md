@@ -1,3 +1,5 @@
+[![CI](https://github.com/hyperhash-org/hyperhash-ui/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hyperhash-org/hyperhash-ui/actions/workflows/ci.yml)
+
 # Hyper Hash — UI
 
 Frontend web interface for Hyper Hash.  
