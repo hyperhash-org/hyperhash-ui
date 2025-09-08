@@ -1,0 +1,7 @@
+# CODEOWNERS for Hyper Hash repos
+*                                   @hyperhash-org/core @caldefenwycke
+/cmd/**                             @hyperhash-org/core @caldefenwycke
+/internal/**                        @hyperhash-org/core @caldefenwycke
+/configs/**                         @hyperhash-org/infra @caldefenwycke
+/scripts/**                         @hyperhash-org/infra @caldefenwycke
+/docs/**                            @hyperhash-org/docs @caldefenwycke
