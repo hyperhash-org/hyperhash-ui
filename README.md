@@ -9,6 +9,13 @@ Shows miner stats, lane dashboards, and Quasar visualizations.
 - Quasar visualization of hash space
 - Miner lookup by address
 
+## Quickstart
+
+### Dev
+```bash
+npm install
+npm run dev
+
 ## Dev
 ```bash
 pnpm install
